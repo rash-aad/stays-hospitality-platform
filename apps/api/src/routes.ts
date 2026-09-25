@@ -16,6 +16,9 @@ import { fileRoutes } from './domain/files/routes.js';
 import { guideRoutes } from './domain/content/guide-routes.js';
 import { portalRoutes } from './domain/portal/routes.js';
 import { siteRoutes } from './domain/content/site-routes.js';
+import { notificationRoutes } from './domain/notifications/routes.js';
+import { reportRoutes } from './domain/reports/routes.js';
+import { integrationRoutes } from './domain/integrations/routes.js';
 
 export const registerRoutes: Routes = async (app, { config }) => {
   const opts = { config };
@@ -36,4 +39,7 @@ export const registerRoutes: Routes = async (app, { config }) => {
   await app.register(guideRoutes, opts);
   await app.register(portalRoutes, opts);
   await app.register(siteRoutes, opts);
+  await app.register(notificationRoutes, opts);
+  await app.register(reportRoutes, opts);
+  await app.register(integrationRoutes, opts);
 };

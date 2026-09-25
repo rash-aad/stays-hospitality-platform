@@ -16,6 +16,9 @@ const schema = z.object({
   UPLOAD_DIR: z.string().default('./uploads'),
   PLATFORM_ROOT_DOMAIN: z.string().default('localhost'),
   LOG_LEVEL: z.string().default('info'),
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default('mailto:ops@example.com'),
   /** Run BullMQ workers inside the API process (dev convenience). */
   INLINE_WORKER: z.enum(['0', '1']).default('1'),
 });

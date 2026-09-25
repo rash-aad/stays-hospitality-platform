@@ -39,7 +39,7 @@ export async function notify(
       const o = overrides.find((t) => t.channel === (ch === 'in_app' ? 'email' : ch));
       const subject = render(o?.subject ?? base.subject, input.vars);
       const body = render(o?.body ?? (ch === 'sms' || ch === 'whatsapp' ? (base.sms ?? base.body) : base.body), input.vars);
-      const to = ch === 'email' ? person.email : ch === 'sms' || ch === 'whatsapp' ? person.phone : null;
+      const to = ch === 'email' ? person.email : ch === 'sms' || ch === 'whatsapp' ? person.phone : ch === 'push' ? 'subscriptions' : null;
       return {
         tenantId: input.tenantId,
         channel: ch,

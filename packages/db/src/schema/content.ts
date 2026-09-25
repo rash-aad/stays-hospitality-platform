@@ -210,3 +210,20 @@ export const integrations = pgTable(
   },
   (t) => [uniqueIndex('integrations_uq').on(t.tenantId, t.kind, t.provider)],
 );
+
+/** Web-push subscriptions for installed PWAs (guest portal and staff app). */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: id(),
+    tenantId: tenantId(),
+    recipientType: text('recipient_type', { enum: ['guest', 'user'] }).notNull(),
+    recipientId: uuid('recipient_id').notNull(),
+    endpoint: text('endpoint').notNull().unique(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('push_subscriptions_recipient_idx').on(t.tenantId, t.recipientType, t.recipientId)],
+);

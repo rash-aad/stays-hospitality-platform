@@ -1,10 +1,11 @@
-import { notifications } from '@hp/db';
-import { eq, sql } from 'drizzle-orm';
+import { notifications, pushSubscriptions } from '@hp/db';
+import { and, eq, sql } from 'drizzle-orm';
+import webpush from 'web-push';
 import nodemailer, { type Transporter } from 'nodemailer';
 import type { Config } from '../../config.js';
 import { asSystem } from '../../infra/db.js';
 
-export type OutboundMessage = { to: string; subject: string | null; body: string };
+export type OutboundMessage = { to: string; subject: string | null; body: string; tenantId: string; recipientType: 'guest' | 'user'; recipientId: string; relatedType: string | null; relatedId: string | null };
 /** Channel adapter. SMS/WhatsApp/push ship with a logging driver; swap in a vendor (MSG91, Gupshup, FCM) here. */
 export interface ChannelDriver {
   send(msg: OutboundMessage): Promise<void>;
@@ -33,7 +34,27 @@ export function initTransports(config: Config) {
   );
   drivers.sms = new LogDriver('sms');
   drivers.whatsapp = new LogDriver('whatsapp');
-  drivers.push = new LogDriver('push');
+  drivers.push = config.VAPID_PUBLIC_KEY && config.VAPID_PRIVATE_KEY ? new WebPushDriver(config) : new LogDriver('push');
+}
+
+/** Web push to every installed PWA of the recipient; dead subscriptions are pruned. */
+class WebPushDriver implements ChannelDriver {
+  constructor(config: Config) {
+    webpush.setVapidDetails(config.VAPID_SUBJECT, config.VAPID_PUBLIC_KEY!, config.VAPID_PRIVATE_KEY!);
+  }
+  async send(msg: OutboundMessage) {
+    const subs = await asSystem((tx) => tx.select().from(pushSubscriptions).where(and(eq(pushSubscriptions.tenantId, msg.tenantId), eq(pushSubscriptions.recipientType, msg.recipientType), eq(pushSubscriptions.recipientId, msg.recipientId))));
+    const url = msg.recipientType === 'guest' ? '/stay' : '/admin';
+    const payload = JSON.stringify({ title: msg.subject ?? 'Update', body: msg.body.slice(0, 240), url, tag: msg.relatedId ?? undefined });
+    for (const s of subs) {
+      try {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600 });
+      } catch (e) {
+        const code = (e as { statusCode?: number }).statusCode;
+        if (code === 404 || code === 410) await asSystem((tx) => tx.delete(pushSubscriptions).where(eq(pushSubscriptions.id, s.id)));
+      }
+    }
+  }
 }
 
 export function setDriver(channel: string, driver: ChannelDriver) {
@@ -58,7 +79,7 @@ export async function dispatchNotifications(batch = 50) {
         continue;
       }
       try {
-        await driver.send({ to: n.toAddress, subject: n.subject, body: n.body });
+        await driver.send({ to: n.toAddress, subject: n.subject, body: n.body, tenantId: n.tenantId, recipientType: n.recipientType, recipientId: n.recipientId, relatedType: n.relatedType, relatedId: n.relatedId });
         await tx.update(notifications).set({ status: 'sent', sentAt: sql`now()` }).where(eq(notifications.id, n.id));
         sent++;
       } catch (e) {
