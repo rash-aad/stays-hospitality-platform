@@ -15,6 +15,7 @@ import { experienceRoutes } from './domain/experiences/routes.js';
 import { fileRoutes } from './domain/files/routes.js';
 import { guideRoutes } from './domain/content/guide-routes.js';
 import { portalRoutes } from './domain/portal/routes.js';
+import { siteRoutes } from './domain/content/site-routes.js';
 
 export const registerRoutes: Routes = async (app, { config }) => {
   const opts = { config };
@@ -34,4 +35,5 @@ export const registerRoutes: Routes = async (app, { config }) => {
   await app.register(fileRoutes, opts);
   await app.register(guideRoutes, opts);
   await app.register(portalRoutes, opts);
+  await app.register(siteRoutes, opts);
 };
