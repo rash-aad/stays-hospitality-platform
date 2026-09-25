@@ -19,6 +19,7 @@ import { httpDuration, registry } from './infra/metrics.js';
 import { queueStats } from './infra/queue.js';
 import { redis } from './infra/redis.js';
 import { registerRoutes } from './routes.js';
+import { setRuntimeConfig } from './runtime.js';
 
 export async function buildApp(config: Config) {
   const app = Fastify({
@@ -34,6 +35,7 @@ export async function buildApp(config: Config) {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
   setRootDomain(config.PLATFORM_ROOT_DOMAIN);
+  setRuntimeConfig(config);
 
   await app.register(helmet, { contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } });
   await app.register(cors, {
@@ -50,6 +52,7 @@ export async function buildApp(config: Config) {
     redis: redis(),
     nameSpace: 'rl:',
     keyGenerator: (req) => req.ip,
+    allowList: config.NODE_ENV === 'test' ? () => true : undefined,
   });
 
   await app.register(swagger, {

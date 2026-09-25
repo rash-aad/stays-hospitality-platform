@@ -1,6 +1,7 @@
 import { isModuleKey, MODULE_KEYS, type ModuleKey } from '@hp/contracts';
 import { auditLogs, bookings, domains, tenants, users } from '@hp/db';
 import { count, desc, eq, sql } from 'drizzle-orm';
+import { outer } from '../../lib/sql.js';
 import { z } from 'zod';
 import { badRequest, notFound } from '../../http/errors.js';
 import { requirePlatform } from '../../http/guards.js';
@@ -24,10 +25,10 @@ export const platformRoutes: Routes = async (app, { config }) => {
       const rows = await tx
         .select({
           id: tenants.id, slug: tenants.slug, name: tenants.name, status: tenants.status, currency: tenants.currency, createdAt: tenants.createdAt,
-          staff: sql<number>`(select count(*)::int from users u where u.tenant_id = ${tenants.id})`,
-          bookings: sql<number>`(select count(*)::int from bookings b where b.tenant_id = ${tenants.id})`,
-          modules: sql<string[]>`(select coalesce(array_agg(module_key order by module_key), '{}') from tenant_modules m where m.tenant_id = ${tenants.id} and m.enabled)`,
-          domain: sql<string | null>`(select hostname from domains d where d.tenant_id = ${tenants.id} and d.is_primary limit 1)`,
+          staff: sql<number>`(select count(*)::int from users u where u.tenant_id = ${outer(tenants.id)})`,
+          bookings: sql<number>`(select count(*)::int from bookings b where b.tenant_id = ${outer(tenants.id)})`,
+          modules: sql<string[]>`(select coalesce(array_agg(module_key order by module_key), '{}') from tenant_modules m where m.tenant_id = ${outer(tenants.id)} and m.enabled)`,
+          domain: sql<string | null>`(select hostname from domains d where d.tenant_id = ${outer(tenants.id)} and d.is_primary limit 1)`,
         })
         .from(tenants)
         .orderBy(tenants.name);

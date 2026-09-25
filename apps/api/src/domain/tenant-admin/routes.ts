@@ -1,6 +1,7 @@
 import { isModuleKey, PERMISSION_KEYS, PERMISSIONS, type Permission } from '@hp/contracts';
 import { auditLogs, properties, rolePermissions, roles, tenants, userRoles, users } from '@hp/db';
 import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import { outer } from '../../lib/sql.js';
 import { z } from 'zod';
 import { badRequest, forbidden, notFound } from '../../http/errors.js';
 import { requireStaff, staffActor, tenantOf } from '../../http/guards.js';
@@ -70,7 +71,7 @@ export const tenantAdminRoutes: Routes = async (app, { config }) => {
       const rows = await tx
         .select({
           id: users.id, name: users.name, email: users.email, status: users.status, lastLoginAt: users.lastLoginAt,
-          roles: sql<{ id: string; key: string; name: string }[]>`coalesce((select json_agg(json_build_object('id', r.id, 'key', r.key, 'name', r.name)) from user_roles ur join roles r on r.id = ur.role_id where ur.user_id = ${users.id}), '[]')`,
+          roles: sql<{ id: string; key: string; name: string }[]>`coalesce((select json_agg(json_build_object('id', r.id, 'key', r.key, 'name', r.name)) from user_roles ur join roles r on r.id = ur.role_id where ur.user_id = ${outer(users.id)}), '[]')`,
         })
         .from(users).where(where).orderBy(users.name).limit(req.query.pageSize).offset(offset(req.query));
       const [{ n }] = (await tx.select({ n: count() }).from(users).where(where)) as [{ n: number }];
@@ -177,7 +178,7 @@ export const tenantAdminRoutes: Routes = async (app, { config }) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => ({
       data: await tx
-        .select({ id: users.id, name: users.name, roles: sql<string[]>`coalesce((select array_agg(r.key) from user_roles ur join roles r on r.id = ur.role_id where ur.user_id = ${users.id}), '{}')` })
+        .select({ id: users.id, name: users.name, roles: sql<string[]>`coalesce((select array_agg(r.key) from user_roles ur join roles r on r.id = ur.role_id where ur.user_id = ${outer(users.id)}), '{}')` })
         .from(users).where(and(eq(users.tenantId, t.id), eq(users.status, 'active'))).orderBy(users.name),
     }));
   });
@@ -195,7 +196,7 @@ export const tenantAdminRoutes: Routes = async (app, { config }) => {
         req.query.entityType ? eq(auditLogs.entityType, req.query.entityType) : undefined,
       );
       const rows = await tx
-        .select({ log: auditLogs, actorName: sql<string | null>`coalesce((select name from users where id = ${auditLogs.actorId}), (select first_name || ' ' || last_name from guests where id = ${auditLogs.actorId}))` })
+        .select({ log: auditLogs, actorName: sql<string | null>`coalesce((select name from users where id = ${outer(auditLogs.actorId)}), (select first_name || ' ' || last_name from guests where id = ${outer(auditLogs.actorId)}))` })
         .from(auditLogs).where(where).orderBy(desc(auditLogs.createdAt)).limit(req.query.pageSize).offset(offset(req.query));
       const [{ n }] = (await tx.select({ n: count() }).from(auditLogs).where(where)) as [{ n: number }];
       return { data: rows.map((r) => ({ ...r.log, actorName: r.actorName })), meta: pageMeta(req.query, n) };
