@@ -99,31 +99,46 @@ export async function staffLogin(input: { email: string; password: string; tenan
  * (token theft detection).
  */
 export async function rotateRefresh(token: string, userAgent?: string) {
-  const reused = await asSystem(async (tx) => {
+  const outcome = await asSystem(async (tx) => {
     const [row] = await tx.select().from(refreshTokens).where(eq(refreshTokens.tokenHash, sha256(token)));
-    if (!row?.revokedAt) return false;
-    // Reuse of a rotated token: assume theft and kill the whole family (committed before we reject).
-    await tx.update(refreshTokens).set({ revokedAt: new Date() }).where(and(eq(refreshTokens.familyId, row.familyId), isNull(refreshTokens.revokedAt)));
-    return true;
+    if (!row?.revokedAt) return 'fresh' as const;
+    // A rotated token presented again. If it was rotated moments ago and its successor has never been
+    // used, the client simply lost the refresh response (e.g. navigated mid-request): allow it once.
+    // Compared in SQL: timestamps are microsecond-precise there, millisecond-precise in JS.
+    const [{ used }] = (await tx.execute(sql`select exists(select 1 from refresh_tokens t where t.family_id = ${row.familyId}
+      and t.created_at > (select created_at from refresh_tokens where id = ${row.id}) and t.revoked_at is not null) as used`)) as unknown as [{ used: boolean }];
+    if (!used && Date.now() - row.revokedAt.getTime() < REUSE_GRACE_MS) {
+      // Delete (not revoke) the never-used successor so it can never claim this grace itself.
+      await tx.delete(refreshTokens).where(and(eq(refreshTokens.familyId, row.familyId), isNull(refreshTokens.revokedAt)));
+      return { grace: row } as const;
+    }
+    // Otherwise assume theft and destroy the whole family (committed before we reject). Deleting rather
+    // than revoking ensures no member of a compromised family can ever qualify for the grace path.
+    await tx.delete(refreshTokens).where(eq(refreshTokens.familyId, row.familyId));
+    return 'stolen' as const;
   });
-  if (reused) throw unauthorized('Session expired');
+  if (outcome === 'stolen') throw unauthorized('Session expired');
+  if (typeof outcome === 'object') return asSystem(async (tx) => issueSession(tx, await claimsFor(tx, outcome.grace), { userAgent, familyId: outcome.grace.familyId }));
   return asSystem(async (tx) => {
     const [row] = await tx.select().from(refreshTokens).where(eq(refreshTokens.tokenHash, sha256(token))).for('update');
     if (!row || row.revokedAt) throw unauthorized('Session expired');
     if (row.expiresAt < new Date()) throw unauthorized('Session expired');
     await tx.update(refreshTokens).set({ revokedAt: new Date() }).where(eq(refreshTokens.id, row.id));
-    let claims: AccessClaims;
-    if (row.guestId) {
-      const [g] = await tx.select({ id: guests.id, tenantId: guests.tenantId }).from(guests).where(eq(guests.id, row.guestId));
-      if (!g) throw unauthorized('Session expired');
-      claims = { typ: 'guest', sub: g.id, tid: g.tenantId };
-    } else {
-      const [u] = await tx.select().from(users).where(eq(users.id, row.userId!));
-      if (!u || u.status !== 'active') throw unauthorized('Session expired');
-      claims = u.isPlatformAdmin && !u.tenantId ? { typ: 'platform', sub: u.id } : { typ: 'staff', sub: u.id, tid: u.tenantId! };
-    }
-    return issueSession(tx, claims, { userAgent, familyId: row.familyId });
+    return issueSession(tx, await claimsFor(tx, row), { userAgent, familyId: row.familyId });
   });
+}
+
+const REUSE_GRACE_MS = 10_000;
+
+async function claimsFor(tx: Tx, row: typeof refreshTokens.$inferSelect): Promise<AccessClaims> {
+  if (row.guestId) {
+    const [g] = await tx.select({ id: guests.id, tenantId: guests.tenantId }).from(guests).where(eq(guests.id, row.guestId));
+    if (!g) throw unauthorized('Session expired');
+    return { typ: 'guest', sub: g.id, tid: g.tenantId };
+  }
+  const [u] = await tx.select().from(users).where(eq(users.id, row.userId!));
+  if (!u || u.status !== 'active') throw unauthorized('Session expired');
+  return u.isPlatformAdmin && !u.tenantId ? { typ: 'platform', sub: u.id } : { typ: 'staff', sub: u.id, tid: u.tenantId! };
 }
 
 export async function revokeRefresh(token: string) {

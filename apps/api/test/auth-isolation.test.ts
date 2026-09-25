@@ -22,11 +22,26 @@ describe('authentication', () => {
     expect(r1.statusCode).toBe(200);
     const rotated = r1.cookies.find((c) => c.name === 'hp_rt_staff')!.value;
 
-    // Replaying the old token revokes the family, including the rotated one.
+    // The rotated token is used, so replaying the old one is theft: the whole family is revoked.
+    const used = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', headers: { 'x-csrf': '1' }, cookies: { hp_rt_staff: rotated } });
+    expect(used.statusCode).toBe(200);
+    const latest = used.cookies.find((c) => c.name === 'hp_rt_staff')!.value;
     const replay = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', headers: { 'x-csrf': '1' }, cookies: { hp_rt_staff: cookie.value } });
     expect(replay.statusCode).toBe(401);
-    const after = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', headers: { 'x-csrf': '1' }, cookies: { hp_rt_staff: rotated } });
+    const after = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', headers: { 'x-csrf': '1' }, cookies: { hp_rt_staff: latest } });
     expect(after.statusCode).toBe(401);
+  });
+
+  it('tolerates a lost refresh response (old token reused before its successor is ever used)', async () => {
+    const t = await createTenant();
+    const login = await app.inject({ method: 'POST', url: '/api/v1/auth/staff/login', payload: { email: t.ownerEmail, password: t.password } });
+    const first = login.cookies.find((c) => c.name === 'hp_rt_staff')!.value;
+    const r1 = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', headers: { 'x-csrf': '1' }, cookies: { hp_rt_staff: first } });
+    const lost = r1.cookies.find((c) => c.name === 'hp_rt_staff')!.value; // the browser never stored this
+    const retry = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', headers: { 'x-csrf': '1' }, cookies: { hp_rt_staff: first } });
+    expect(retry.statusCode).toBe(200);
+    // The unused successor is retired, so it can't be used later.
+    expect((await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', headers: { 'x-csrf': '1' }, cookies: { hp_rt_staff: lost } })).statusCode).toBe(401);
   });
 
   it('rejects bad passwords and locks after repeated failures', async () => {

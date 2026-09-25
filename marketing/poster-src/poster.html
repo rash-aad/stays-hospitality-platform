@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stays — poster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=Inter+Tight:wght@400;500;600&display=swap">
+<style>
+  @page { size: A3; margin: 0; }
+  :root {
+    --paper: #f3eee5; --ink: #16130f; --ink-2: #3d3a34; --muted: #6f685d; --line: #d9d1c3;
+    --accent: #0e5a57; --accent-soft: #dfe9e6; --night: #13201e; --night-ink: #efe8dc;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1123px; height: 1587px; }
+  body { background: var(--paper); color: var(--ink); font-family: "Inter Tight", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .poster { position: relative; width: 1123px; height: 1587px; overflow: hidden; display: flex; flex-direction: column; }
+  .poster > * { flex-shrink: 0; }
+  .serif { font-family: "Newsreader", Georgia, serif; }
+
+  /* ---------- masthead ---------- */
+  header { display: flex; justify-content: space-between; align-items: baseline; padding: 58px 72px 0; }
+  .mark { font-family: "Newsreader", serif; font-size: 34px; letter-spacing: -0.01em; }
+  .kicker { font-size: 12.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+
+  /* ---------- headline ---------- */
+  .lede { padding: 36px 72px 0; }
+  h1 { font-family: "Newsreader", serif; font-weight: 400; font-size: 94px; line-height: 0.95; letter-spacing: -0.025em; }
+  h1 em { font-style: italic; color: var(--accent); }
+  .sub { margin-top: 22px; max-width: 690px; font-size: 21px; line-height: 1.45; color: var(--ink-2); }
+
+  /* ---------- product composition ---------- */
+  .stage { position: relative; margin: 38px 72px 0; height: 412px; }
+  .browser { position: absolute; left: 0; top: 0; width: 820px; border-radius: 6px; overflow: hidden; background: #fff;
+             box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 30px 60px -28px rgba(22,19,15,.45); }
+  .browser .bar { height: 26px; background: #e9e3d8; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-bottom: 1px solid #dcd4c6; }
+  .browser .bar i { width: 8px; height: 8px; border-radius: 50%; background: #cfc6b6; display: block; }
+  .browser .bar span { margin-left: 14px; font-size: 11px; color: var(--muted); letter-spacing: .02em; }
+  .browser img { display: block; width: 100%; height: 386px; object-fit: cover; object-position: top center; }
+  .phone { position: absolute; right: 18px; top: 26px; width: 226px; padding: 10px; border-radius: 38px; background: #0f0e0c;
+           box-shadow: 0 40px 70px -30px rgba(22,19,15,.6); }
+  .phone img { display: block; width: 100%; border-radius: 29px; }
+  .caption { position: absolute; font-size: 12px; color: var(--muted); letter-spacing: .02em; }
+
+  /* ---------- features ---------- */
+  .features { margin: 42px 72px 0; border-top: 1px solid var(--ink); display: grid; grid-template-columns: 1fr 1fr; }
+  .f { padding: 22px 0 22px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 54px 1fr; column-gap: 8px; }
+  .f:nth-child(odd) { padding-right: 36px; border-right: 1px solid var(--line); }
+  .f:nth-child(even) { padding-left: 36px; }
+  .n { font-family: "Newsreader", serif; font-size: 22px; color: var(--accent); line-height: 1.2; }
+  .f h2 { font-family: "Newsreader", serif; font-weight: 500; font-size: 29px; line-height: 1.1; letter-spacing: -0.01em; }
+  .f p { margin-top: 9px; font-size: 15.5px; line-height: 1.5; color: var(--ink-2); }
+  .f .shot { grid-column: 2; margin-top: 14px; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: #fff; }
+  .f .shot img { display: block; width: 100%; }
+
+  /* ---------- footer band ---------- */
+  footer { margin-top: auto; background: var(--night); color: var(--night-ink); padding: 34px 72px 38px; display: grid; grid-template-columns: 1.35fr 1fr; gap: 40px; align-items: end; }
+  footer .cta { font-family: "Newsreader", serif; font-size: 44px; line-height: 1.02; letter-spacing: -0.015em; }
+  footer .cta em { color: #9fd3cc; }
+  footer .for { margin-top: 14px; font-size: 14.5px; color: rgba(239,232,220,.72); line-height: 1.5; }
+  footer .right { text-align: right; }
+  footer .btn { display: inline-block; background: #efe8dc; color: var(--night); font-weight: 600; font-size: 16px; padding: 15px 26px; border-radius: 2px; letter-spacing: .01em; }
+  footer .url { margin-top: 14px; font-size: 13px; color: rgba(239,232,220,.6); letter-spacing: .02em; }
+</style>
+</head>
+<body>
+<div class="poster">
+  <header>
+    <span class="mark">Stays</span>
+    <span class="kicker">The operating system for hotels &amp; resorts</span>
+  </header>
+
+  <section class="lede">
+    <h1>One house for<br><em>every</em> guest.</h1>
+    <p class="sub">Direct bookings paid by UPI, a restaurant that runs itself, and one calm app for the whole stay — all on your own beautifully designed website.</p>
+  </section>
+
+  <section class="stage">
+    <div class="browser">
+      <div class="bar"><i></i><i></i><i></i><span>www.yourhotel.in</span></div>
+      <img src="c_site.png" alt="A Stays property website">
+    </div>
+    <div class="phone"><img src="c_app.png" alt="The guest app"></div>
+  </section>
+
+  <section class="features">
+    <article class="f">
+      <span class="n">01</span>
+      <div>
+        <h2>Direct booking, paid by UPI</h2>
+        <p>Guests pay straight to <strong>your own UPI ID</strong> — your team approves the reference in one tap. Or switch on a UPI gateway. Booked direct, so no OTA commission.</p>
+      </div>
+      <div class="shot"><img src="c_pay.png" alt="UPI payment page with QR code"></div>
+    </article>
+    <article class="f">
+      <span class="n">02</span>
+      <div>
+        <h2>A restaurant that runs itself</h2>
+        <p>Table bookings with no double-seating, orders to the room, pool or beach, and a live kitchen screen — charged straight to the room bill.</p>
+      </div>
+      <div class="shot"><img src="c_kitchen.png" alt="Live kitchen order board"></div>
+    </article>
+    <article class="f">
+      <span class="n">03</span>
+      <div>
+        <h2>One app for the whole stay</h2>
+        <p>Towels, repairs, late check-out, airport pickups, spa and the bill — requests reach the right team with a clock on every one. Installs from the browser; works on weak Wi-Fi.</p>
+      </div>
+    </article>
+    <article class="f">
+      <span class="n">04</span>
+      <div>
+        <h2>Your website, your domain</h2>
+        <p>Ten designed templates — coastal to heritage palace. Edit on the page, publish in a click, roll back any time. Switch modules on only when you need them.</p>
+      </div>
+    </article>
+  </section>
+
+  <footer>
+    <div>
+      <p class="cta">Open your first property<br><em>this week.</em></p>
+      <p class="for">For hotels, resorts, villas and boutique stays across India — one workspace per property, every team on the same page.</p>
+    </div>
+    <div class="right">
+      <span class="btn">Book a demo</span>
+      <p class="url">github.com/rash-aad/stays-hospitality-platform</p>
+    </div>
+  </footer>
+</div>
+</body>
+</html>
