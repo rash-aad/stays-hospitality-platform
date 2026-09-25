@@ -26,7 +26,7 @@ services:
     volumes: ["uploads:/app/uploads"]
   migrate:
     build: { context: .., dockerfile: apps/api/Dockerfile }
-    command: ["node", "-e", "import('/app/packages/db/src/migrate.ts')"]
+    command: ["node", "apps/api/dist/migrate.js"]
     env_file: ../.env.production
     profiles: ["tools"]
 volumes: { caddy_data: {}, uploads: {} }

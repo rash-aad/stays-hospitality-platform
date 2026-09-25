@@ -26,16 +26,10 @@ BEGIN
   END IF;
 END $$;`;
 
-export async function runMigrations(url: string) {
+export async function runMigrations(url: string, migrationsFolder = fileURLToPath(new URL('../migrations', import.meta.url))) {
   const { db, sql } = createDb(url, { max: 1 });
-  await migrate(db, { migrationsFolder: fileURLToPath(new URL('../migrations', import.meta.url)) });
+  await migrate(db, { migrationsFolder });
   // Re-assert RLS + grants for every tenant table so new tables added by later migrations are covered.
   await sql.unsafe(POST_MIGRATE);
   await sql.end();
-}
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const url = process.env.MIGRATE_URL ?? process.env.DATABASE_URL!;
-  await runMigrations(url);
-  console.log('migrations applied');
 }

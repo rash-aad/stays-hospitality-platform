@@ -19,7 +19,7 @@ WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
-COPY --from=build /app/packages ./packages
+COPY --from=build /app/packages/db/migrations ./packages/db/migrations
 COPY apps/api/package.json ./apps/api/
 USER app
 EXPOSE 4000

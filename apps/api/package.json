@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "tsx watch --env-file=../../.env src/main.ts",
     "worker": "tsx --env-file=../../.env src/worker.ts",
-    "build": "tsup src/main.ts src/worker.ts --format esm --target node22 --noExternal @hp/db --noExternal @hp/contracts",
+    "build": "tsup",
     "start": "node dist/main.js",
     "test": "vitest run",
     "typecheck": "tsc -p . --noEmit",
-    "seed": "tsx --env-file=../../.env src/seed.ts"
+    "seed": "tsx --env-file=../../.env src/seed.ts",
+    "migrate:prod": "node dist/migrate.js"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",

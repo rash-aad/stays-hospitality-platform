@@ -11,7 +11,7 @@
   "scripts": {
     "generate": "drizzle-kit generate",
     "setup": "tsx src/setup.ts",
-    "migrate": "tsx src/setup.ts && tsx src/migrate.ts",
+    "migrate": "tsx src/setup.ts && tsx src/migrate-cli.ts",
     "seed": "npm run seed --workspace=@hp/api",
     "reset": "tsx src/reset.ts && npm run migrate && npm run seed --workspace=@hp/api"
   },
