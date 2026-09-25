@@ -1,0 +1,17 @@
+{
+  "name": "hospitality-platform",
+  "private": true,
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev": "npm run dev --workspace=@hp/api & npm run dev --workspace=@hp/web",
+    "dev:api": "npm run dev --workspace=@hp/api",
+    "dev:web": "npm run dev --workspace=@hp/web",
+    "db:migrate": "npm run migrate --workspace=@hp/db",
+    "db:seed": "npm run seed --workspace=@hp/db",
+    "db:reset": "npm run reset --workspace=@hp/db",
+    "test": "npm run test --workspace=@hp/contracts && npm run test --workspace=@hp/api",
+    "e2e": "npm run e2e --workspace=@hp/web",
+    "typecheck": "tsc -b packages/contracts packages/db apps/api && npm run typecheck --workspace=@hp/web"
+  },
+  "engines": { "node": ">=22" }
+}

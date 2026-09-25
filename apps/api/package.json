@@ -1,0 +1,49 @@
+{
+  "name": "@hp/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/main.ts",
+    "worker": "tsx --env-file=../../.env src/worker.ts",
+    "build": "tsup src/main.ts src/worker.ts --format esm --target node22 --noExternal @hp/db --noExternal @hp/contracts",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "typecheck": "tsc -p . --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/nodemailer": "^8.0.2",
+    "@types/qrcode": "^1.5.6",
+    "@types/sanitize-html": "^2.16.1",
+    "dotenv": "^18.0.3",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/helmet": "^13.1.1",
+    "@fastify/multipart": "^10.1.2",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/swagger": "^9.9.0",
+    "@fastify/swagger-ui": "^6.1.1",
+    "@hp/contracts": "*",
+    "@hp/db": "*",
+    "@node-rs/argon2": "^2.2.1",
+    "bullmq": "^6.3.8",
+    "drizzle-orm": "^0.45.3",
+    "fastify": "^5.12.5",
+    "fastify-type-provider-zod": "^7.0.0",
+    "ioredis": "^6.0.0",
+    "jose": "^6.2.12",
+    "nodemailer": "^10.0.10",
+    "postgres": "^3.4.9",
+    "prom-client": "^15.1.3",
+    "qrcode": "^1.5.4",
+    "sanitize-html": "^2.17.7",
+    "zod": "^4.6.5"
+  }
+}
