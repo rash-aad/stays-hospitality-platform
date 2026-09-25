@@ -1,0 +1,32 @@
+# Production topology: Caddy (TLS, on-demand certificates for tenant domains) → web → api.
+# Postgres and Redis are expected to be managed services in production; the containers here are for a single-host install.
+services:
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data"]
+    depends_on: [web]
+  web:
+    build: { context: .., dockerfile: apps/web/Dockerfile }
+    environment:
+      API_INTERNAL_URL: http://api:4000
+      APP_HOSTS: ${APP_HOSTS}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+    depends_on: [api]
+  api:
+    build: { context: .., dockerfile: apps/api/Dockerfile }
+    env_file: ../.env.production
+    environment: { INLINE_WORKER: "0", WEB_INTERNAL_URL: http://web:3000 }
+    volumes: ["uploads:/app/uploads"]
+  worker:
+    build: { context: .., dockerfile: apps/api/Dockerfile }
+    command: ["node", "apps/api/dist/worker.js"]
+    env_file: ../.env.production
+    environment: { WEB_INTERNAL_URL: http://web:3000 }
+    volumes: ["uploads:/app/uploads"]
+  migrate:
+    build: { context: .., dockerfile: apps/api/Dockerfile }
+    command: ["node", "-e", "import('/app/packages/db/src/migrate.ts')"]
+    env_file: ../.env.production
+    profiles: ["tools"]
+volumes: { caddy_data: {}, uploads: {} }

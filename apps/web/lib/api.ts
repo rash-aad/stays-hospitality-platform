@@ -71,7 +71,9 @@ export async function api<T = unknown>(path: string, opts: Opts = {}): Promise<T
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const e = json?.error ?? {};
-    throw new ApiError(res.status, e.code ?? 'error', e.message ?? `Request failed (${res.status})`, e.details);
+    // Surface the first field message for validation errors — it tells the user what to fix.
+    const field = e.code === 'validation_error' && Array.isArray(e.details) ? e.details[0]?.message : null;
+    throw new ApiError(res.status, e.code ?? 'error', field ?? e.message ?? `Request failed (${res.status})`, e.details);
   }
   return json as T;
 }

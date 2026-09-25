@@ -8,6 +8,7 @@ import type { Routes } from '../../http/types.js';
 import { withTenant } from '../../infra/db.js';
 import { audit } from '../../lib/audit.js';
 import { purgeSite } from '../../lib/purge.js';
+import { afterCommit } from '../../infra/db.js';
 import { addDomain, makePrimary, removeDomain, TXT_PREFIX, verifyDomain } from './domains.js';
 import { applyTemplate, publishedPage, publishPage, rollback, saveDraft, stripTags, validateDoc, versionsOf } from './site-service.js';
 
@@ -30,7 +31,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       const r = await applyTemplate(tx, t.id, req.params.key, staffActor(req).userId, req.body);
-      purgeSite(t.id);
+      afterCommit(tx, () => purgeSite(t.id));
       await audit(tx, req, { action: 'site.template_apply', entityType: 'site', entityId: t.id, changes: { template: req.params.key, ...req.body } });
       return { data: r };
     });
@@ -54,7 +55,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       await tx.update(themes).set(req.body).where(eq(themes.tenantId, t.id));
-      purgeSite(t.id);
+      afterCommit(tx, () => purgeSite(t.id));
       await audit(tx, req, { action: 'site.theme', entityType: 'site', entityId: t.id });
       return { ok: true };
     });
@@ -74,7 +75,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       await tx.insert(siteSettings).values({ tenantId: t.id, ...stripTags(req.body) }).onConflictDoUpdate({ target: siteSettings.tenantId, set: stripTags(req.body) });
-      purgeSite(t.id);
+      afterCommit(tx, () => purgeSite(t.id));
       await audit(tx, req, { action: 'site.settings', entityType: 'site', entityId: t.id });
       return { ok: true };
     });
@@ -152,7 +153,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       const v = await publishPage(tx, t.id, req.params.id, staffActor(req).userId, req.body.note);
-      purgeSite(t.id);
+      afterCommit(tx, () => purgeSite(t.id));
       await audit(tx, req, { action: 'page.publish', entityType: 'page', entityId: req.params.id, changes: { version: v.version } });
       return { data: v };
     });
@@ -163,7 +164,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     return withTenant(t.id, async (tx) => {
       const ps = await tx.select().from(pages).where(and(eq(pages.tenantId, t.id), eq(pages.hasUnpublishedChanges, true)));
       for (const p of ps) await publishPage(tx, t.id, p.id, staffActor(req).userId, 'Published with site');
-      purgeSite(t.id);
+      afterCommit(tx, () => purgeSite(t.id));
       await audit(tx, req, { action: 'site.publish', entityType: 'site', entityId: t.id, changes: { pages: ps.map((p) => p.slug) } });
       return { data: { published: ps.length } };
     });
@@ -182,7 +183,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       const v = await rollback(tx, t.id, req.params.id, req.body.versionId, staffActor(req).userId, req.body.publish);
-      purgeSite(t.id);
+      afterCommit(tx, () => purgeSite(t.id));
       await audit(tx, req, { action: 'page.rollback', entityType: 'page', entityId: req.params.id, changes: req.body });
       return { data: v };
     });
@@ -291,6 +292,13 @@ export const siteRoutes: Routes = async (app, { config }) => {
       await tx.insert(guestMessages).values({ tenantId: t.id, guestId: g.id, senderType: 'guest', body: stripTags(`[Website — ${req.body.topic ?? 'General'}] ${req.body.message}`) });
     });
     return reply.status(202).send({ ok: true });
+  });
+
+  /** Caddy on-demand TLS `ask` hook: issue certificates only for hosts that resolve to an active tenant. */
+  app.get('/public/tls-allowed', { schema: { hide: true, querystring: z.object({ domain: z.string().max(253) }) } }, async (req, reply) => {
+    const { resolveHost } = await import('../tenants/tenant-cache.js');
+    const id = await resolveHost(req.query.domain, config.PLATFORM_ROOT_DOMAIN);
+    return reply.status(id ? 200 : 404).send({ ok: !!id });
   });
 
   /** Per-tenant PWA manifest so guests install *their* hotel's app. */

@@ -48,7 +48,7 @@ export const fileRoutes: Routes = async (app, { config }) => {
         purpose: req.query.purpose, uploadedByType: a.type === 'staff' ? 'user' : 'guest', uploadedById: a.type === 'staff' ? a.userId : a.guestId,
       }).returning();
       if (req.query.purpose === 'media') {
-        await tx.insert(mediaAssets).values({ tenantId: t.id, fileId: f!.id, url: `${config.API_PUBLIC_URL}/api/v1/public/media/${f!.id}`, alt: '' });
+        await tx.insert(mediaAssets).values({ tenantId: t.id, fileId: f!.id, url: `/api/v1/public/media/${f!.id}`, alt: '' });
       }
       return f!;
     });

@@ -18,6 +18,7 @@ const NAV: { group: string; items: Item[] }[] = [
     { href: '/admin/guests', label: 'Guests', perm: 'guests.read' },
     { href: '/admin/payments', label: 'Payments', perm: 'payments.read', badge: 'payments' },
     { href: '/admin/messages', label: 'Messages', perm: 'messages.manage', badge: 'messages' },
+    { href: '/admin/events', label: 'Events & banquets', perm: 'events.manage', mod: 'events' },
   ] },
   { group: 'Dining', items: [
     { href: '/admin/dining/reservations', label: 'Table bookings', perm: 'restaurant.reservations', mod: 'restaurant.reservations' },
@@ -50,7 +51,7 @@ const NAV: { group: string; items: Item[] }[] = [
 
 type Dash = { paymentsToVerify: number; openRequests: number; liveOrders: number; unreadMessages: number };
 
-export function AdminShell({ children }: { children: ReactNode }) {
+export function AdminShell({ children, bare }: { children: ReactNode; bare?: boolean }) {
   const router = useRouter();
   const path = usePathname();
   const [me, setMe] = useState<Me | null>(null);
@@ -69,6 +70,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const { data: dash } = useStaff<{ data: Dash }>(me ? '/admin/dashboard' : null, { refreshInterval: 30_000 });
 
   if (!me) return <div className="grid min-h-dvh place-items-center text-[13px] text-muted">Loading workspace…</div>;
+  if (bare) return <MeCtx.Provider value={me}><ToastProvider>{children}</ToastProvider></MeCtx.Provider>;
   const can = (it: Item) =>
     (!it.perm || me.isOwner || me.permissions.includes(it.perm)) &&
     (!it.mod || me.tenant.modules.includes(it.mod)) &&

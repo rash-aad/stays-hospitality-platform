@@ -43,7 +43,7 @@ export const authRoutes: Routes = async (app, { config }) => {
     },
   }, async (req, reply) => {
     const r = await staffLogin({ ...req.body, tenantSlug: req.body.workspace, userAgent: req.headers['user-agent'] });
-    await asSystem((tx) => audit(tx, null, { action: 'auth.login', entityType: 'user', entityId: r.user.id, tenantId: 'tid' in r.session.claims ? r.session.claims.tid : null }));
+    await asSystem((tx) => audit(tx, req, { action: 'auth.login', entityType: 'user', entityId: r.user.id, tenantId: 'tid' in r.session.claims ? r.session.claims.tid : null, actor: { type: r.session.claims.typ === 'platform' ? 'platform' : 'user', id: r.user.id } }));
     return { ...setRefresh(reply, 'staff', r.session), user: r.user, kind: r.session.claims.typ === 'platform' ? 'platform' as const : 'staff' as const, workspace: r.tenant };
   });
 

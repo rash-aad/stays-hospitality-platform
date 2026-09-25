@@ -236,7 +236,7 @@ function OutletSettings({ outlet, onSaved }: { outlet: Outlet; onSaved: () => vo
       </Section>
       <div className="px-5 py-4"><button className="btn btn-primary" disabled={busy} onClick={() => {
         const { name, description, cuisine, location, acceptsReservations, acceptsOrders, ...settings } = f;
-        run(() => staffApi(`/admin/restaurants/${outlet.id}`, { method: 'PATCH', body: { name, description: description || null, cuisine: cuisine || null, location: location || null, acceptsReservations, acceptsOrders, settings } }), 'Outlet saved').then(onSaved);
+        run(() => staffApi(`/admin/restaurants/${outlet.id}`, { method: 'PATCH', body: { name, description: description || null, cuisine: cuisine || null, location: location || null, acceptsReservations, acceptsOrders, settings } }), 'Outlet saved').then(() => onSaved());
       }}>Save outlet</button></div>
     </div>
   );

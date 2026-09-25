@@ -28,11 +28,23 @@ export async function pingDb() {
  * Run `fn` in a transaction scoped to one tenant. Row-level security policies read
  * app.tenant_id, so even a query that forgets its tenant filter cannot see other tenants.
  */
-export function withTenant<T>(tenantId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
-  return db().transaction(async (tx) => {
+export async function withTenant<T>(tenantId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  const hooks: (() => void)[] = [];
+  const result = await db().transaction(async (tx) => {
+    commitHooks.set(tx, hooks);
     await tx.execute(sql`select set_config('app.tenant_id', ${tenantId}, true)`);
     return fn(tx);
   });
+  for (const h of hooks) h();
+  return result;
+}
+
+const commitHooks = new WeakMap<Tx, (() => void)[]>();
+/** Run a side effect only after the surrounding tenant transaction has committed (e.g. cache purges). */
+export function afterCommit(tx: Tx, fn: () => void) {
+  const hooks = commitHooks.get(tx);
+  if (hooks) hooks.push(fn);
+  else fn();
 }
 
 /** Cross-tenant/system work (host resolution, login lookup, platform admin, jobs). Use sparingly. */

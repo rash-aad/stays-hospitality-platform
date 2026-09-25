@@ -1,7 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+
+/** False during SSR and until hydration: submit buttons stay disabled so early taps aren't lost. */
+export function useHydrated() {
+  return useSyncExternalStore(() => () => {}, () => true, () => false);
+}
 import { useEdit } from './edit';
 import type { RestaurantCard } from './types';
 
@@ -12,6 +17,7 @@ export function BookingBar({ inverse }: { inverse?: boolean }) {
   const { editing } = useEdit();
   const router = useRouter();
   const [f, setF] = useState({ checkIn: today(1), checkOut: today(3), adults: '2', children: '0' });
+  const ready = useHydrated();
   return (
     <form
       className={`grid grid-cols-2 gap-px border md:grid-cols-[1fr_1fr_110px_110px_auto] ${inverse ? 'border-white/25 bg-white/25' : 't-line'}`}
@@ -24,7 +30,7 @@ export function BookingBar({ inverse }: { inverse?: boolean }) {
           <input className={`w-full bg-transparent text-[15px] outline-none ${inverse ? 'text-white [color-scheme:dark]' : ''}`} type={type} min={type === 'number' ? (k === 'adults' ? 1 : 0) : f.checkIn && k === 'checkOut' ? f.checkIn : today()} max={type === 'number' ? 12 : undefined} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} required />
         </label>
       ))}
-      <button className="t-btn t-btn-accent col-span-2 h-auto min-h-12 md:col-span-1" style={{ borderRadius: 0 }}>Check availability</button>
+      <button className="t-btn t-btn-accent col-span-2 h-auto min-h-12 md:col-span-1" style={{ borderRadius: 0 }} disabled={!ready}>Check availability</button>
     </form>
   );
 }
@@ -44,6 +50,7 @@ export function ReservationWidget({ restaurants, restaurantId }: { restaurants: 
   const [done, setDone] = useState<{ reference: string; status: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const ready = useHydrated();
   useEffect(() => {
     if (editing || !rid) return;
     setSlots(null); setPick(null);
@@ -96,7 +103,7 @@ export function ReservationWidget({ restaurants, restaurantId }: { restaurants: 
         </div>
       )}
       {err && <p className="text-sm text-red-700">{err}</p>}
-      <button className="t-btn" disabled={!pick || busy}>{busy ? 'Booking…' : pick ? `Book ${pick.time} for ${party}` : 'Choose a time'}</button>
+      <button className="t-btn" disabled={!ready || !pick || busy}>{busy ? 'Booking…' : pick ? `Book ${pick.time} for ${party}` : 'Choose a time'}</button>
     </form>
   );
 }
@@ -105,6 +112,7 @@ export function ContactForm({ topics }: { topics: string[] }) {
   const { editing } = useEdit();
   const [f, setF] = useState({ name: '', email: '', phone: '', topic: topics[0] ?? 'General', message: '', website: '' });
   const [state, setState] = useState<'idle' | 'busy' | 'sent' | 'error'>('idle');
+  const ready = useHydrated();
   if (state === 'sent') return <p className="display text-3xl">Thank you — we’ll reply shortly.</p>;
   return (
     <form className="grid gap-3 md:grid-cols-2" onSubmit={async (e) => {
@@ -119,7 +127,7 @@ export function ContactForm({ topics }: { topics: string[] }) {
       <label className="md:col-span-2"><span className="t-label">Message</span><textarea className="t-input" rows={5} required minLength={5} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} /></label>
       <input type="text" tabIndex={-1} autoComplete="off" className="hidden" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} aria-hidden />
       {state === 'error' && <p className="text-sm text-red-700 md:col-span-2">Something went wrong — please try again or call us.</p>}
-      <div className="md:col-span-2"><button className="t-btn" disabled={state === 'busy'}>{state === 'busy' ? 'Sending…' : 'Send message'}</button></div>
+      <div className="md:col-span-2"><button className="t-btn" disabled={!ready || state === 'busy'}>{state === 'busy' ? 'Sending…' : 'Send message'}</button></div>
     </form>
   );
 }

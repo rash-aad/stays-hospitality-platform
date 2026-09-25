@@ -13,6 +13,7 @@ import { notify } from '../notifications/notify.js';
 import { listModules, setModule } from '../tenants/modules.js';
 import { provisionTenant } from '../tenants/provision.js';
 import { invalidateTenant } from '../tenants/tenant-cache.js';
+import { purgeSite } from '../../lib/purge.js';
 
 const slugRe = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 
@@ -58,8 +59,12 @@ export const platformRoutes: Routes = async (app, { config }) => {
         modules: mods, templateKey: req.body.templateKey, rootDomain: config.PLATFORM_ROOT_DOMAIN,
         owner: { name: req.body.ownerName, email: req.body.ownerEmail },
       });
-      const { properties } = await import('@hp/db');
+      const { properties, pages } = await import('@hp/db');
       await tx.insert(properties).values({ tenantId: r.tenant.id, name: req.body.name, slug: 'main', timezone: req.body.timezone });
+      // A usable branded site from day one: starter pages from the chosen template, published.
+      const { applyTemplate, publishPage } = await import('../content/site-service.js');
+      await applyTemplate(tx, r.tenant.id, req.body.templateKey ?? 'luxury', r.ownerId!, { replaceContent: true });
+      for (const p of await tx.select({ id: pages.id }).from(pages).where(eq(pages.tenantId, r.tenant.id))) await publishPage(tx, r.tenant.id, p.id, r.ownerId!, 'Launch');
       const token = await createOneTimeToken(tx, { kind: 'staff_invite', tenantId: r.tenant.id, userId: r.ownerId!, ttlMinutes: 7 * 24 * 60 });
       await notify(tx, {
         tenantId: r.tenant.id, recipient: { type: 'user', id: r.ownerId! }, templateKey: 'auth.staff_invite', channels: ['email'],
@@ -93,6 +98,7 @@ export const platformRoutes: Routes = async (app, { config }) => {
       return t;
     });
     await invalidateTenant(t.id);
+    purgeSite(t.id); // suspended sites stop rendering immediately
     return { data: t };
   });
 
@@ -101,11 +107,13 @@ export const platformRoutes: Routes = async (app, { config }) => {
   }, async (req) => {
     if (!isModuleKey(req.params.key)) throw badRequest('Unknown module');
     const key = req.params.key;
-    return asSystem(async (tx) => {
+    const out = await asSystem(async (tx) => {
       const changed = await setModule(tx, req.params.id, key, req.body.enabled);
       await audit(tx, req, { action: req.body.enabled ? 'module.enable' : 'module.disable', entityType: 'module', entityId: key, tenantId: req.params.id, changes: { changed } });
       return { data: await listModules(tx, req.params.id) };
     });
+    purgeSite(req.params.id);
+    return out;
   });
 
   app.get('/platform/modules', { schema: { tags: ['platform'] } }, async () => ({ data: MODULE_KEYS }));

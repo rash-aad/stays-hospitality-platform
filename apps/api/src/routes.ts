@@ -19,6 +19,7 @@ import { siteRoutes } from './domain/content/site-routes.js';
 import { notificationRoutes } from './domain/notifications/routes.js';
 import { reportRoutes } from './domain/reports/routes.js';
 import { integrationRoutes } from './domain/integrations/routes.js';
+import { eventRoutes } from './domain/events/routes.js';
 
 export const registerRoutes: Routes = async (app, { config }) => {
   const opts = { config };
@@ -42,4 +43,5 @@ export const registerRoutes: Routes = async (app, { config }) => {
   await app.register(notificationRoutes, opts);
   await app.register(reportRoutes, opts);
   await app.register(integrationRoutes, opts);
+  await app.register(eventRoutes, opts);
 };

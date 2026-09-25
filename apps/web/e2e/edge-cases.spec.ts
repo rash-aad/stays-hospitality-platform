@@ -63,6 +63,7 @@ test.describe('security & isolation from the browser', () => {
     await g.getByLabel('Name').fill('Priya Test');
     await g.getByLabel('Email').fill(uniqueEmail('xss'));
     await g.getByLabel('Message').fill(payload);
+    await expect(g.getByRole('button', { name: 'Send message' })).toBeEnabled(); // hydrated
     await g.getByRole('button', { name: 'Send message' }).click();
     await expect(g.getByText('Thank you')).toBeVisible();
     const staff = await staffPage(browser);
@@ -83,7 +84,7 @@ test.describe('security & isolation from the browser', () => {
 
   test('admin pages bounce to sign-in without a session', async ({ page }) => {
     await page.goto(`${ADMIN}/admin/payments`, { waitUntil: 'domcontentloaded' });
-    await page.waitForURL(/\/admin\/login/);
+    await page.waitForURL(/\/admin\/login/, { waitUntil: 'commit' });
   });
 
   test('wrong password is rejected without revealing the account', async ({ page }) => {

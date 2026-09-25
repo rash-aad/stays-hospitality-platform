@@ -2,7 +2,16 @@
 
 Multi-tenant platform for hotels, resorts and villas: a tenant CRM and operations workspace, a branded website with a visual builder (10 templates), direct room booking with UPI payments, restaurant reservations and ordering, and one mobile-first guest portal (PWA) for the whole stay.
 
-**Status:** under active development. The API is complete and tested; the web app (admin, website, booking flow, guest portal) is being built.
+**Status:** feature-complete across all surfaces, covered by API integration tests and Playwright end-to-end tests of the full guest journey.
+
+| Surface | Where | Who |
+|---|---|---|
+| Super Admin console | `/platform` | Platform operators — onboard properties, module plans, suspend |
+| Tenant Admin | `/admin` | Owner, GM, front desk, restaurant, kitchen, housekeeping, maintenance, concierge (nav and actions follow each role's permissions) |
+| Visual website builder | `/admin/site` | Content editors and publishers |
+| Property website | tenant domain `/` | The public |
+| Booking & UPI payment | tenant domain `/book` | Guests |
+| Guest portal (installable PWA) | tenant domain `/stay` | Staying and upcoming guests |
 
 ## Stack
 - `apps/api` — Node.js + TypeScript, Fastify, REST under `/api/v1`, OpenAPI at `/docs`, BullMQ workers
@@ -31,8 +40,13 @@ npm run dev:web                 # http://localhost:3000
 Demo sites: http://seabreeze.localhost:3000 (resort with dining) and http://printworks.localhost:3000 (city hotel, no restaurant).
 Demo logins are listed at the top of `apps/api/src/seed.ts`. Emails are captured by Mailpit at http://localhost:8025.
 
+## Documentation
+- [Architecture](docs/ARCHITECTURE.md) — tenancy, modules, booking concurrency, page model, jobs
+- [Payments](docs/PAYMENTS.md) — own-UPI-ID with staff verification, UPI gateway, room charge
+- [Operations](docs/OPERATIONS.md) — deployment, custom domains/TLS, backups, monitoring
+
 ## Tests
 ```bash
 npm test          # API integration suites (isolation, modules, concurrency, payments, restaurant, builder, domains…)
-npm run e2e       # Playwright end-to-end guest journey
+npm run e2e       # Playwright: guest journey, edge cases, roles, builder, platform, mobile (needs dev servers running)
 ```

@@ -65,11 +65,11 @@ export default function Housekeeping() {
           <>
             <Section title="Room status">
               <div className="flex flex-wrap gap-1.5">
-                {['dirty', 'clean', 'inspected', 'out_of_service'].map((s) => <button key={s} className={cx('btn btn-sm', room.housekeepingStatus === s && 'btn-primary')} disabled={busy} onClick={() => run(() => staffApi(`/admin/housekeeping/rooms/${room.id}/status`, { method: 'PUT', body: { status: s } }), `Room ${room.number} marked ${human(s).toLowerCase()}`).then(reload)}>{human(s)}</button>)}
+                {['dirty', 'clean', 'inspected', 'out_of_service'].map((s) => <button key={s} className={cx('btn btn-sm', room.housekeepingStatus === s && 'btn-primary')} disabled={busy} onClick={() => run(() => staffApi(`/admin/housekeeping/rooms/${room.id}/status`, { method: 'PUT', body: { status: s } }), `Room ${room.number} marked ${human(s).toLowerCase()}`).then(() => reload())}>{human(s)}</button>)}
               </div>
               {room.housekeepingStatus === 'out_of_service' && <p className="hint">Out-of-service rooms are removed from sale automatically.</p>}
             </Section>
-            <Section title="Tasks today" actions={<button className="btn btn-sm" onClick={() => run(() => staffApi('/admin/housekeeping/tasks', { body: { roomId: room.id, kind: 'touch_up', scheduledFor: date } }), 'Task added').then(reload)}>Add touch-up</button>}>
+            <Section title="Tasks today" actions={<button className="btn btn-sm" onClick={() => run(() => staffApi('/admin/housekeeping/tasks', { body: { roomId: room.id, kind: 'touch_up', scheduledFor: date } }), 'Task added').then(() => reload())}>Add touch-up</button>}>
               {room.tasks.length === 0 ? <p className="text-[13px] text-muted">No tasks for this room.</p> : (
                 <ul className="space-y-3">
                   {room.tasks.map((t) => (
@@ -77,10 +77,10 @@ export default function Housekeeping() {
                       <p className="flex items-center justify-between text-[13px]"><span className="font-medium">{human(t.kind)}{t.serviceRequestId && <span className="font-normal text-muted"> · guest request</span>}</span><Status value={t.status} /></p>
                       {t.notes && <p className="mt-1 text-xs text-muted">{t.notes}</p>}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <select className="input h-7 w-44" value={t.assignedUserId ?? ''} onChange={(e) => run(() => staffApi(`/admin/housekeeping/tasks/${t.id}`, { method: 'PATCH', body: { assignedUserId: e.target.value || null } }), 'Assigned').then(reload)}>
+                        <select className="input h-7 w-44" value={t.assignedUserId ?? ''} onChange={(e) => run(() => staffApi(`/admin/housekeeping/tasks/${t.id}`, { method: 'PATCH', body: { assignedUserId: e.target.value || null } }), 'Assigned').then(() => reload())}>
                           <option value="">Unassigned</option>{staff?.data.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
-                        {(NEXT[t.status] ?? []).map((n) => <button key={n.to} className={cx('btn btn-sm', (n.to === 'done' || n.to === 'inspected') && 'btn-primary')} disabled={busy} onClick={() => run(() => staffApi(`/admin/housekeeping/tasks/${t.id}/status`, { body: { status: n.to } }), n.label).then(reload)}>{n.label}</button>)}
+                        {(NEXT[t.status] ?? []).map((n) => <button key={n.to} className={cx('btn btn-sm', (n.to === 'done' || n.to === 'inspected') && 'btn-primary')} disabled={busy} onClick={() => run(() => staffApi(`/admin/housekeeping/tasks/${t.id}/status`, { body: { status: n.to } }), n.label).then(() => reload())}>{n.label}</button>)}
                       </div>
                     </li>
                   ))}

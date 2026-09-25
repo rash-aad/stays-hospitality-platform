@@ -9,7 +9,7 @@ import { useStay } from '@/components/stay/shell';
 export default function Notifications() {
   const { reload } = useStay();
   const { data } = useGuest<{ data: { id: string; subject: string | null; body: string; readAt: string | null; createdAt: string }[] }>('/portal/notifications');
-  useEffect(() => { if (data) guestApi('/portal/notifications/read', { method: 'POST' }).then(reload); }, [data, reload]);
+  useEffect(() => { if (data) guestApi('/portal/notifications/read', { method: 'POST' }).then(() => reload()); }, [data, reload]);
   return (
     <>
       <Title back="/stay">Updates</Title>
