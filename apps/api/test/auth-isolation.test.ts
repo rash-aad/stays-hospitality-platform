@@ -94,3 +94,14 @@ describe('cross-tenant isolation', () => {
     expect(none).toHaveLength(0);
   });
 });
+
+describe('token/host binding', () => {
+  it('refuses a guest token presented on another property’s site', async () => {
+    const { inHouseGuest } = await import('./helpers.js');
+    const a = await createTenant();
+    const b = await createTenant();
+    const g = await inHouseGuest(a);
+    expect((await app.inject({ method: 'GET', url: '/api/v1/portal/home', headers: { ...g.auth, ...a.host } })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/api/v1/portal/home', headers: { ...g.auth, ...b.host } })).statusCode).toBe(401);
+  });
+});

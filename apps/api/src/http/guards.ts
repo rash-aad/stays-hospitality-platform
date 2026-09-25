@@ -20,6 +20,12 @@ export async function authenticate(req: FastifyRequest): Promise<void> {
   }
   const tenant = await loadTenant(claims.tid);
   if (!tenant || tenant.status !== 'active') return;
+  // A token minted for one property is never honoured on another property's site.
+  const siteHost = req.headers['x-tenant-host'];
+  if (typeof siteHost === 'string' && siteHost) {
+    const hostTenant = await resolveHost(siteHost, rootDomain);
+    if (hostTenant && hostTenant !== tenant.id) return;
+  }
   if (claims.typ === 'staff') {
     const access = await loadStaffAccess(tenant.id, claims.sub);
     if (!access.active) return;

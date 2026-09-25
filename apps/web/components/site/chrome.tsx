@@ -24,10 +24,10 @@ export function SiteHeader({ site, overlay }: { site: SiteInfo; overlay?: boolea
           {site.tenant.modules.includes('guest_portal') && <a href="/stay" className="opacity-85 hover:opacity-100">Your stay</a>}
           {cta && <a href={cta.href} className={`t-btn h-10 px-5 ${light ? 't-btn-outline' : ''}`}>{cta.label}</a>}
         </nav>
-        <button className="md:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Menu">{open ? 'Close' : 'Menu'}</button>
+        <button className="md:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="site-menu" aria-label={open ? 'Close menu' : 'Open menu'}>{open ? 'Close' : 'Menu'}</button>
       </div>
       {open && (
-        <nav className="anim-sheet border-t t-line px-5 pb-8 md:hidden" style={{ background: 'var(--t-bg)' }}>
+        <nav id="site-menu" aria-label="Site" className="anim-sheet border-t t-line px-5 pb-8 md:hidden" style={{ background: 'var(--t-bg)' }}>
           {[...nav, ...(site.tenant.modules.includes('guest_portal') ? [{ label: 'Your stay', href: '/stay' }] : [])].map((l) => <a key={l.href} href={l.href} className="display block border-b t-line py-4 text-2xl">{l.label}</a>)}
           {cta && <a href={cta.href} className="t-btn mt-6 w-full">{cta.label}</a>}
         </nav>

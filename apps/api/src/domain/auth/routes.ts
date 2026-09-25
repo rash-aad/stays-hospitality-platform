@@ -8,6 +8,7 @@ import type { Routes } from '../../http/types.js';
 import { asSystem, withTenant } from '../../infra/db.js';
 import { audit } from '../../lib/audit.js';
 import { notify } from '../notifications/notify.js';
+import { siteUrl } from '../../lib/site-url.js';
 import {
   consumeOneTimeToken, createOneTimeToken, hashPassword, issueSession, revokeRefresh, rotateRefresh,
   staffLogin, validatePasswordStrength, verifyPassword, REFRESH_TTL_DAYS, type Session,
@@ -171,7 +172,7 @@ export const authRoutes: Routes = async (app, { config }) => {
       const [prop] = await tx.select({ name: properties.name }).from(properties).limit(1);
       await notify(tx, {
         tenantId: tenant.id, recipient: { type: 'guest', id: guestId }, templateKey: 'auth.email_verify', channels: ['email'],
-        vars: { name: req.body.firstName, property: prop?.name ?? tenant.name, link: `${config.WEB_PUBLIC_URL}/stay/verify?token=${token}&site=${tenant.slug}` },
+        vars: { name: req.body.firstName, property: prop?.name ?? tenant.name, link: `${await siteUrl(tx, tenant.id)}/stay/verify?token=${token}` },
       });
       return issueSession(tx, { typ: 'guest', sub: guestId, tid: tenant.id }, { userAgent: req.headers['user-agent'] });
     });

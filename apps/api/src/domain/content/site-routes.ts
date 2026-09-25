@@ -7,6 +7,7 @@ import { requireModule, requireStaff, resolvePublicTenant, staffActor, tenantOf 
 import type { Routes } from '../../http/types.js';
 import { withTenant } from '../../infra/db.js';
 import { audit } from '../../lib/audit.js';
+import { purgeSite } from '../../lib/purge.js';
 import { addDomain, makePrimary, removeDomain, TXT_PREFIX, verifyDomain } from './domains.js';
 import { applyTemplate, publishedPage, publishPage, rollback, saveDraft, stripTags, validateDoc, versionsOf } from './site-service.js';
 
@@ -29,6 +30,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       const r = await applyTemplate(tx, t.id, req.params.key, staffActor(req).userId, req.body);
+      purgeSite(t.id);
       await audit(tx, req, { action: 'site.template_apply', entityType: 'site', entityId: t.id, changes: { template: req.params.key, ...req.body } });
       return { data: r };
     });
@@ -52,6 +54,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       await tx.update(themes).set(req.body).where(eq(themes.tenantId, t.id));
+      purgeSite(t.id);
       await audit(tx, req, { action: 'site.theme', entityType: 'site', entityId: t.id });
       return { ok: true };
     });
@@ -71,6 +74,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       await tx.insert(siteSettings).values({ tenantId: t.id, ...stripTags(req.body) }).onConflictDoUpdate({ target: siteSettings.tenantId, set: stripTags(req.body) });
+      purgeSite(t.id);
       await audit(tx, req, { action: 'site.settings', entityType: 'site', entityId: t.id });
       return { ok: true };
     });
@@ -148,6 +152,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       const v = await publishPage(tx, t.id, req.params.id, staffActor(req).userId, req.body.note);
+      purgeSite(t.id);
       await audit(tx, req, { action: 'page.publish', entityType: 'page', entityId: req.params.id, changes: { version: v.version } });
       return { data: v };
     });
@@ -158,6 +163,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     return withTenant(t.id, async (tx) => {
       const ps = await tx.select().from(pages).where(and(eq(pages.tenantId, t.id), eq(pages.hasUnpublishedChanges, true)));
       for (const p of ps) await publishPage(tx, t.id, p.id, staffActor(req).userId, 'Published with site');
+      purgeSite(t.id);
       await audit(tx, req, { action: 'site.publish', entityType: 'site', entityId: t.id, changes: { pages: ps.map((p) => p.slug) } });
       return { data: { published: ps.length } };
     });
@@ -176,6 +182,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       const v = await rollback(tx, t.id, req.params.id, req.body.versionId, staffActor(req).userId, req.body.publish);
+      purgeSite(t.id);
       await audit(tx, req, { action: 'page.rollback', entityType: 'page', entityId: req.params.id, changes: req.body });
       return { data: v };
     });

@@ -8,6 +8,7 @@ import { requireStaff, staffActor, tenantOf } from '../../http/guards.js';
 import type { Routes } from '../../http/types.js';
 import { withTenant } from '../../infra/db.js';
 import { audit } from '../../lib/audit.js';
+import { purgeSite } from '../../lib/purge.js';
 import { offset, pageMeta, pageQuery } from '../../lib/pagination.js';
 import { createOneTimeToken } from '../auth/service.js';
 import { invalidateStaffAccess } from '../auth/permissions.js';
@@ -58,6 +59,7 @@ export const tenantAdminRoutes: Routes = async (app, { config }) => {
     const key = req.params.key;
     return withTenant(t.id, async (tx) => {
       const changed = await setModule(tx, t.id, key, req.body.enabled);
+      purgeSite(t.id);
       await audit(tx, req, { action: req.body.enabled ? 'module.enable' : 'module.disable', entityType: 'module', entityId: key, changes: { changed } });
       return { data: await listModules(tx, t.id) };
     });

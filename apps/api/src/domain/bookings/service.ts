@@ -9,7 +9,8 @@ import type { Tx } from '../../infra/db.js';
 import { formatDate, todayIn, zonedTime } from '../../lib/dates.js';
 import { reference } from '../../lib/ids.js';
 import { formatMoney } from '../../lib/money.js';
-import { runtimeConfig } from '../../runtime.js';
+import { siteUrl } from '../../lib/site-url.js';
+import { payToken } from './pay-token.js';
 import { issueAccessLink } from '../guests/access.js';
 import { notify } from '../notifications/notify.js';
 import { enabledMethods, getSettings, startPayment, type Instructions } from '../payments/service.js';
@@ -145,7 +146,7 @@ export async function createBooking(
     [final] = await tx.update(bookings).set({ holdExpiresAt: r.payment.expiresAt }).where(eq(bookings.id, booking!.id)).returning() as [Booking];
     await notify(tx, {
       tenantId: tenant.id, recipient: { type: 'guest', id: guest.id }, templateKey: 'booking.awaiting_payment', channels: ['email'],
-      vars: { name: guest.firstName, reference: booking!.reference, total: formatMoney(quote.total, tenant.currency), holdUntil: r.payment.expiresAt?.toLocaleString('en-IN', { timeZone: tenant.timezone }), vpa: settings.upiVpa ?? '', link: `${runtimeConfig().WEB_PUBLIC_URL}/book/pay/${booking!.id}?site=${tenant.slug}` },
+      vars: { name: guest.firstName, reference: booking!.reference, total: formatMoney(quote.total, tenant.currency), holdUntil: r.payment.expiresAt?.toLocaleString('en-IN', { timeZone: tenant.timezone }), vpa: settings.upiVpa ?? '', link: `${await siteUrl(tx, tenant.id)}/book/pay/${booking!.id}?token=${payToken(booking!.id)}` },
       related: { type: 'booking', id: booking!.id },
     });
   } else {
@@ -163,7 +164,7 @@ async function onConfirmed(tx: Tx, tenant: Pick<TenantInfo, 'id' | 'slug' | 'nam
     tenantId: tenant.id, recipient: { type: 'guest', id: b.guestId }, templateKey: 'booking.confirmed', channels: ['email', 'in_app'],
     vars: {
       name: g!.firstName, property: prop!.name, reference: b.reference, checkIn: formatDate(b.checkIn), checkOut: formatDate(b.checkOut),
-      room: item?.description ?? '', total: formatMoney(b.total, b.currency), link: `${runtimeConfig().WEB_PUBLIC_URL}/stay/access?token=${token}&site=${tenant.slug}`,
+      room: item?.description ?? '', total: formatMoney(b.total, b.currency), link: `${await siteUrl(tx, tenant.id)}/stay/access?token=${token}`,
     },
     related: { type: 'booking', id: b.id },
   });
@@ -226,7 +227,7 @@ registerPaymentTarget('booking', {
     const [g] = await tx.select().from(guests).where(eq(guests.id, b!.guestId));
     await notify(tx, {
       tenantId: b!.tenantId, recipient: { type: 'guest', id: b!.guestId }, templateKey: 'booking.payment_rejected',
-      vars: { name: g!.firstName, reference: b!.reference, utr: p.utr, reason: p.rejectionReason, holdUntil: p.expiresAt?.toLocaleString('en-IN', { timeZone: t.timezone }), link: `${runtimeConfig().WEB_PUBLIC_URL}/book/pay/${b!.id}?site=${t.slug}` },
+      vars: { name: g!.firstName, reference: b!.reference, utr: p.utr, reason: p.rejectionReason, holdUntil: p.expiresAt?.toLocaleString('en-IN', { timeZone: t.timezone }), link: `${await siteUrl(tx, b!.tenantId)}/book/pay/${b!.id}?token=${payToken(b!.id)}` },
       related: { type: 'booking', id: b!.id },
     });
   },

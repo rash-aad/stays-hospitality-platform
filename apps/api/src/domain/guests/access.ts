@@ -5,6 +5,7 @@ import { AppError } from '../../http/errors.js';
 import type { Tx } from '../../infra/db.js';
 import { createOneTimeToken } from '../auth/service.js';
 import { notify } from '../notifications/notify.js';
+import { siteUrl } from '../../lib/site-url.js';
 
 export async function sendGuestAccessLink(
   tx: Tx,
@@ -28,13 +29,14 @@ export async function issueAccessLink(
   tenant: Pick<TenantInfo, 'id' | 'slug' | 'name'>,
   guest: { id: string; firstName: string },
   booking: { id: string; reference: string },
-  webUrl: string,
+  _webUrl: string,
 ) {
   const token = await createOneTimeToken(tx, { kind: 'guest_access', tenantId: tenant.id, guestId: guest.id, bookingId: booking.id, ttlMinutes: 60 * 24 });
+  const base = await siteUrl(tx, tenant.id);
   const [prop] = await tx.select({ name: properties.name }).from(properties).limit(1);
   await notify(tx, {
     tenantId: tenant.id, recipient: { type: 'guest', id: guest.id }, templateKey: 'guest.access_link', channels: ['email'],
-    vars: { name: guest.firstName, property: prop?.name ?? tenant.name, reference: booking.reference, link: `${webUrl}/stay/access?token=${token}&site=${tenant.slug}` },
+    vars: { name: guest.firstName, property: prop?.name ?? tenant.name, reference: booking.reference, link: `${base}/stay/access?token=${token}` },
   });
   return token;
 }

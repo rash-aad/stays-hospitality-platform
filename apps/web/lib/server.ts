@@ -23,7 +23,8 @@ export async function getSiteData(host: string, site: SiteInfo): Promise<SiteDat
   ]);
   const restaurants = rest?.data ?? [];
   const menus: Record<string, MenuData> = {};
-  await Promise.all(restaurants.map(async (r) => { menus[r.id] = (await publicGet<{ data: MenuData }>(host, `/public/restaurants/${r.id}/menu`))?.data ?? []; }));
+  // Menus change during service (sold-out items), so they are never served from cache.
+  await Promise.all(restaurants.map(async (r) => { menus[r.id] = (await publicGet<{ data: MenuData }>(host, `/public/restaurants/${r.id}/menu`, 0))?.data ?? []; }));
   return { site, roomTypes: rooms?.data ?? [], restaurants, experiences: exps?.data ?? [], offers: offers?.data ?? [], menus };
 }
 
