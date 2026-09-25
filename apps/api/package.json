@@ -9,7 +9,8 @@
     "build": "tsup src/main.ts src/worker.ts --format esm --target node22 --noExternal @hp/db --noExternal @hp/contracts",
     "start": "node dist/main.js",
     "test": "vitest run",
-    "typecheck": "tsc -p . --noEmit"
+    "typecheck": "tsc -p . --noEmit",
+    "seed": "tsx --env-file=../../.env src/seed.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",

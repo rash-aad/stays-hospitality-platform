@@ -12,8 +12,8 @@
     "generate": "drizzle-kit generate",
     "setup": "tsx src/setup.ts",
     "migrate": "tsx src/setup.ts && tsx src/migrate.ts",
-    "seed": "tsx src/seed/index.ts",
-    "reset": "tsx src/reset.ts && tsx src/migrate.ts && tsx src/seed/index.ts"
+    "seed": "npm run seed --workspace=@hp/api",
+    "reset": "tsx src/reset.ts && npm run migrate && npm run seed --workspace=@hp/api"
   },
   "dependencies": {
     "dotenv": "^18.0.3",
