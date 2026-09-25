@@ -1,4 +1,4 @@
-import type { PageDoc, PageSection, ThemeTokens } from '../page-schema.js';
+import type { PageDoc, PageSection, ThemeTokens } from '../page-schema';
 
 export const img = (id: string, w = 2000) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
 

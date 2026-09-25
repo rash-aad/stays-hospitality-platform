@@ -1,4 +1,4 @@
-import { buildTemplate, img } from './factory.js';
+import { buildTemplate, img } from './factory';
 
 const faq = [
   { q: 'What time are check-in and check-out?', a: 'Check-in from 2 pm, check-out by 11 am. We’ll always try to accommodate early arrivals.' },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pageDocSchema, SITE_TEMPLATES, themeTokensSchema } from './index.js';
+import { pageDocSchema, SITE_TEMPLATES, themeTokensSchema } from './index';
 
 describe('site templates', () => {
   it('ships ten distinct templates', () => {

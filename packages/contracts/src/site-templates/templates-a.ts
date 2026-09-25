@@ -1,4 +1,4 @@
-import { buildTemplate, img } from './factory.js';
+import { buildTemplate, img } from './factory';
 
 const commonFaq = [
   { q: 'What time are check-in and check-out?', a: 'Check-in is from 2 pm and check-out is until 11 am. Ask us about an early arrival or late departure — we say yes whenever the house allows.' },

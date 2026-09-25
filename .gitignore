@@ -8,3 +8,7 @@ coverage
 playwright-report
 test-results
 uploads/
+.env.local
+*.local
+next-env.d.ts
+.DS_Store

@@ -1,8 +1,8 @@
-import type { SiteTemplate } from './factory.js';
-import { beach, heritage, hill, luxury, urban } from './templates-a.js';
-import { backwaters, business, desert, jungle, wellness } from './templates-b.js';
+import type { SiteTemplate } from './factory';
+import { beach, heritage, hill, luxury, urban } from './templates-a';
+import { backwaters, business, desert, jungle, wellness } from './templates-b';
 
-export type { SiteTemplate } from './factory.js';
+export type { SiteTemplate } from './factory';
 
 /** The ten starter templates tenants choose from in the website builder. */
 export const SITE_TEMPLATES: SiteTemplate[] = [beach, luxury, hill, heritage, urban, jungle, backwaters, desert, wellness, business];
