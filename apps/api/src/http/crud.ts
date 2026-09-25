@@ -7,7 +7,7 @@ import { z, type ZodObject, type ZodRawShape } from 'zod';
 import { withTenant, type Tx } from '../infra/db.js';
 import { audit } from '../lib/audit.js';
 import { notFound } from './errors.js';
-import { requireModule, requireStaff, tenantOf } from './guards.js';
+import { requireAnyModule, requireModule, requireStaff, tenantOf } from './guards.js';
 
 type TenantTable = PgTable & { id: PgColumn; tenantId: PgColumn };
 
@@ -25,6 +25,8 @@ export function crud<T extends TenantTable, S extends ZodRawShape>(
     permission: Permission;
     readPermission?: Permission;
     modules?: ModuleKey[];
+    /** Passes if any one of these modules is enabled. */
+    anyModules?: ModuleKey[];
     orderBy?: PgColumn;
     filter?: (q: Record<string, string | undefined>) => SQL | undefined;
     validate?: (tx: Tx, tenantId: string, body: Record<string, unknown>) => Promise<void>;
@@ -33,7 +35,11 @@ export function crud<T extends TenantTable, S extends ZodRawShape>(
   },
 ) {
   const r = app.withTypeProvider<ZodTypeProvider>();
-  const guard = (perm: Permission) => [requireStaff(perm), ...(opts.modules?.length ? [requireModule(...opts.modules)] : [])];
+  const guard = (perm: Permission) => [
+    requireStaff(perm),
+    ...(opts.modules?.length ? [requireModule(...opts.modules)] : []),
+    ...(opts.anyModules?.length ? [requireAnyModule(...opts.anyModules)] : []),
+  ];
   const t = opts.table as TenantTable;
   const idParams = z.object({ id: z.string().uuid() });
 

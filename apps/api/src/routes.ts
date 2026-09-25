@@ -7,6 +7,14 @@ import { publicBookingRoutes } from './domain/bookings/public-routes.js';
 import { adminBookingRoutes } from './domain/bookings/admin-routes.js';
 import { paymentRoutes } from './domain/payments/routes.js';
 import { guestAdminRoutes } from './domain/guests/admin-routes.js';
+import { restaurantRoutes } from './domain/restaurant/routes.js';
+import { requestRoutes } from './domain/requests/routes.js';
+import { housekeepingRoutes } from './domain/housekeeping/routes.js';
+import { maintenanceRoutes } from './domain/maintenance/routes.js';
+import { experienceRoutes } from './domain/experiences/routes.js';
+import { fileRoutes } from './domain/files/routes.js';
+import { guideRoutes } from './domain/content/guide-routes.js';
+import { portalRoutes } from './domain/portal/routes.js';
 
 export const registerRoutes: Routes = async (app, { config }) => {
   const opts = { config };
@@ -18,4 +26,12 @@ export const registerRoutes: Routes = async (app, { config }) => {
   await app.register(adminBookingRoutes, opts);
   await app.register(paymentRoutes, opts);
   await app.register(guestAdminRoutes, opts);
+  await app.register(restaurantRoutes, opts);
+  await app.register(requestRoutes, opts);
+  await app.register(housekeepingRoutes, opts);
+  await app.register(maintenanceRoutes, opts);
+  await app.register(experienceRoutes, opts);
+  await app.register(fileRoutes, opts);
+  await app.register(guideRoutes, opts);
+  await app.register(portalRoutes, opts);
 };

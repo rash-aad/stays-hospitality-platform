@@ -21,7 +21,7 @@ export type Purpose = 'booking' | 'order' | 'experience';
 export async function getSettings(tx: Tx, tenantId: string): Promise<Settings> {
   const [s] = await tx.select().from(paymentSettings).where(eq(paymentSettings.tenantId, tenantId));
   if (s) return s;
-  const [created] = await tx.insert(paymentSettings).values({ tenantId, methodsEnabled: ['pay_at_property'] }).onConflictDoNothing().returning();
+  const [created] = await tx.insert(paymentSettings).values({ tenantId, methodsEnabled: ['pay_at_property', 'room_charge'] }).onConflictDoNothing().returning();
   return created ?? (await tx.select().from(paymentSettings).where(eq(paymentSettings.tenantId, tenantId)))[0]!;
 }
 

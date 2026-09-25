@@ -48,7 +48,7 @@ export async function provisionTenant(
   });
   await tx.insert(themes).values({ tenantId, templateKey: input.templateKey ?? 'luxury' });
   await tx.insert(siteSettings).values({ tenantId });
-  await tx.insert(paymentSettings).values({ tenantId, methodsEnabled: ['pay_at_property'] });
+  await tx.insert(paymentSettings).values({ tenantId, methodsEnabled: ['pay_at_property', 'room_charge'] });
   let ownerId: string | null = null;
   if (input.owner) {
     const [u] = await tx
