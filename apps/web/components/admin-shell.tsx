@@ -45,6 +45,7 @@ const NAV: { group: string; items: Item[] }[] = [
     { href: '/admin/settings/property', label: 'Property & rooms', perm: 'property.manage' },
     { href: '/admin/settings/rates', label: 'Rates, taxes & offers', perm: 'property.manage' },
     { href: '/admin/settings/payments', label: 'Payment methods', perm: 'payments.read' },
+    { href: '/admin/settings/subscription', label: 'Subscription', perm: 'tenant.settings' },
     { href: '/admin/settings/billing', label: 'Billing & GST', perm: 'tenant.settings' },
     { href: '/admin/settings/channels', label: 'Channels (iCal)', perm: 'bookings.read', mod: 'room_booking' },
     { href: '/admin/settings/modules', label: 'Modules', perm: 'tenant.settings' },
@@ -56,6 +57,27 @@ const NAV: { group: string; items: Item[] }[] = [
     { href: '/admin/settings/audit', label: 'Audit log', perm: 'audit.read' },
   ] },
 ];
+
+type SubBanner = { state: string; daysLeft: number; graceLeft: number; coveredUntil: string; pendingVerification: boolean; trial: boolean };
+
+/** One slim line across the admin when the subscription needs attention. */
+function SubscriptionBanner({ s, locked, canPay }: { s?: SubBanner; locked: boolean; canPay: boolean }) {
+  if (!s) return null;
+  let text: string | null = null;
+  let tone = 'bg-warn-soft text-warn';
+  if (locked || s.state === 'suspended') { text = 'Your workspace is suspended for non-payment — your website is offline. Pay now and we’ll reactivate as soon as it’s verified.'; tone = 'bg-bad text-white'; }
+  else if (s.pendingVerification) { text = 'Payment under verification — we’ll confirm within 12 hours. Everything stays on meanwhile.'; tone = 'bg-accent-soft text-accent'; }
+  else if (s.state === 'overdue' || s.state === 'lapsed') { text = `bookEZ payment overdue — your workspace will be suspended in ${Math.max(0, s.graceLeft)} day${s.graceLeft === 1 ? '' : 's'}.`; tone = 'bg-bad-soft text-bad'; }
+  else if (s.state === 'due') text = `Your bookEZ subscription renews in ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'}.`;
+  else if (s.state === 'trial' && s.daysLeft <= 7) text = `Your free trial ends in ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'}.`;
+  if (!text) return null;
+  return (
+    <div className={cx('flex items-center justify-between gap-3 px-4 py-1.5 text-[13px]', tone)} role="status" data-testid="subscription-banner">
+      <span>{text}</span>
+      {canPay ? !s.pendingVerification && <Link href="/admin/settings/subscription" className="shrink-0 font-medium underline">Pay now</Link> : <span className="shrink-0">Ask the owner to renew.</span>}
+    </div>
+  );
+}
 
 type Dash = { paymentsToVerify: number; openRequests: number; liveOrders: number; unreadMessages: number };
 
@@ -82,12 +104,17 @@ export function AdminShell({ children, bare }: { children: ReactNode; bare?: boo
   }, [router]);
   useEffect(() => setMenu(false), [path]);
 
-  const { data: dash } = useStaff<{ data: Dash }>(me && me.user.mfa !== 'pending' ? '/admin/dashboard' : null, { refreshInterval: 30_000 });
+  const { data: dash } = useStaff<{ data: Dash }>(me && me.user.mfa !== 'pending' && !me.tenant.billingLocked ? '/admin/dashboard' : null, { refreshInterval: 30_000 });
+  const { data: sub } = useStaff<{ data: SubBanner }>(me && me.user.mfa !== 'pending' ? '/admin/subscription/status' : null, { refreshInterval: 5 * 60_000 });
+  // A workspace suspended for non-payment only offers the Subscription page (so the owner can pay).
+  const locked = !!me?.tenant.billingLocked;
+  useEffect(() => { if (locked && !path.startsWith('/admin/settings/subscription') && !path.startsWith('/admin/subscription-invoice')) router.replace('/admin/settings/subscription'); }, [locked, path, router]);
 
   if (!me) return <div className="grid min-h-dvh place-items-center text-[13px] text-muted">Loading workspace…</div>;
   if (me.user.mfa === 'pending') return <ToastProvider><MfaGate enrolled={me.user.mfaEnabled} loginPath="/admin/login" onDone={() => location.reload()} /></ToastProvider>;
   if (bare) return <MeCtx.Provider value={me}><ToastProvider>{children}</ToastProvider></MeCtx.Provider>;
   const can = (it: Item) =>
+    (!locked || it.href === '/admin/settings/subscription') &&
     (!it.perm || me.isOwner || me.permissions.includes(it.perm)) &&
     (!it.mod || me.tenant.modules.includes(it.mod)) &&
     (!it.anyMod || it.anyMod.some((m) => me.tenant.modules.includes(m)));
@@ -145,7 +172,8 @@ export function AdminShell({ children, bare }: { children: ReactNode; bare?: boo
               <button className="btn btn-sm" onClick={() => setMenu(true)} aria-label="Open navigation">Menu</button>
               <span className="truncate text-[13px] font-medium">{me.tenant.name}</span>
             </div>
-            <main className="min-w-0 flex-1">{children}</main>
+            <SubscriptionBanner s={sub?.data} locked={locked} canPay={me.isOwner || me.permissions.includes('tenant.settings')} />
+            <main className="min-w-0 flex-1">{locked && !(me.isOwner || me.permissions.includes('tenant.settings')) ? <p className="p-6 text-[13px]">This workspace is paused because the bookEZ subscription is unpaid. Please ask the owner to renew it.</p> : children}</main>
           </div>
         </div>
       </ToastProvider>

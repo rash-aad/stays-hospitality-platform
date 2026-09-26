@@ -1,5 +1,5 @@
 import { effectiveModules } from '@hp/contracts';
-import { domains, tenantModules, tenants } from '@hp/db';
+import { domains, tenantModules, tenantSubscriptions, tenants } from '@hp/db';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { asSystem } from '../../infra/db.js';
 import { redis } from '../../infra/redis.js';
@@ -20,9 +20,10 @@ export async function loadTenant(tenantId: string): Promise<TenantInfo | null> {
         .select({ key: tenantModules.moduleKey })
         .from(tenantModules)
         .where(and(eq(tenantModules.tenantId, tenantId), eq(tenantModules.enabled, true)));
+      const [sub] = await tx.select({ reason: tenantSubscriptions.suspendedReason }).from(tenantSubscriptions).where(eq(tenantSubscriptions.tenantId, tenantId));
       return {
         id: t.id, slug: t.slug, name: t.name, status: t.status, currency: t.currency, timezone: t.timezone,
-        modules: mods.map((m) => m.key),
+        modules: mods.map((m) => m.key), billingLocked: t.status === 'suspended' && sub?.reason === 'non_payment',
       };
     });
     if (!data) return null;

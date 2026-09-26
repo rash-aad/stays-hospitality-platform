@@ -47,6 +47,7 @@ export async function provisionTenant(
     name: string; slug: string; currency?: string; timezone?: string; contactEmail?: string;
     modules?: ModuleKey[]; templateKey?: string; rootDomain: string;
     owner?: { name: string; email: string; passwordHash?: string };
+    subscription?: { freeDays?: number; monthlyFee?: number | null; yearlyFee?: number | null };
   },
 ) {
   await syncPermissions(tx);
@@ -64,6 +65,8 @@ export async function provisionTenant(
   await tx.insert(themes).values({ tenantId, templateKey: input.templateKey ?? 'luxury' });
   await tx.insert(siteSettings).values({ tenantId });
   await tx.insert(paymentSettings).values({ tenantId, methodsEnabled: ['pay_at_property', 'room_charge'] });
+  const { createSubscription } = await import('../subscriptions/service.js');
+  await createSubscription(tx, tenantId, input.subscription);
   let ownerId: string | null = null;
   if (input.owner) {
     const [u] = await tx

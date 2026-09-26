@@ -50,6 +50,13 @@
       "when": 1790426963576,
       "tag": "0006_revenue_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790427864151,
+      "tag": "0007_tenant_subscriptions",
+      "breakpoints": true
     }
   ]
 }

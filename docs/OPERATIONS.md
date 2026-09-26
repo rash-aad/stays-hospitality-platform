@@ -92,3 +92,22 @@ The platform console (`/platform`) is served only on `PLATFORM_HOST`; every othe
 - Guardrails: a floor and ceiling per room type; a rule can never price outside them.
 - Rules apply everywhere a stay is priced: booking engine, quotes, date changes, extensions. Extra-guest charges, coupons and GST come after.
 - The booking page shows “Only N rooms left” when real availability drops to the threshold you set (0 turns it off).
+
+## Tenant subscriptions (how properties pay bookEZ)
+
+**Set up once — Console → Settings:** bookEZ's UPI ID and payee name, legal name, GSTIN (checksum-validated; its first two digits set bookEZ's state), address, invoice prefix (e.g. `BKZ`), GST rate (18%), SAC code, the verification promise shown to properties ("We confirm payments within 12 hours"), and defaults for new properties: free days (30) and grace days (7).
+
+**Price each property — Console → Tenants → a property → Subscription:**
+- *Free days* count from onboarding (also set in "Onboard a property"); changing them moves the trial end.
+- *Monthly* and/or *yearly* fee in ₹ excluding GST. Leave one empty to not offer it; once the trial is over at least one is required (unless complimentary).
+- *Grace days* override the platform default.
+- New prices apply from the next invoice — an issued invoice never changes.
+- *Extend by days* (goodwill, with a reason), *Make complimentary* (no billing), *Cancel billing*. Every change is in the audit log.
+
+**How a property pays — Settings → Subscription (owner):** picks Monthly or Yearly (price + GST, and the yearly saving), taps *Pay* to get a numbered invoice with a UPI QR / `upi://` link for the exact total (note = invoice number), pays, then submits the 12-digit UTR (+ optional screenshot). The new period always starts the day after current cover (trial end or paid-until) — paying early never loses days. If cover had lapsed beyond the grace period (the property was suspended), it starts on the day of payment instead, so offline days aren't charged. One open invoice at a time; switching monthly↔yearly voids the open one (its number stays in the series).
+
+**Verify — Console → Payments to verify (target: within 12 hours):** check the UTR and amount against bookEZ's bank/UPI statement. *Approve* marks the invoice paid, extends cover by one month/year from the current end, reactivates a property suspended for non-payment and emails the owner. *Reject* needs a reason, which the owner sees; they can resubmit. A UTR can be claimed only once across the platform (rejected claims free it). Platform admins are emailed when a UTR arrives and again if it waits more than 12 hours; rows older than 12 hours are highlighted.
+
+**Lifecycle (hourly `subscriptions` job, idempotent):** reminder emails to owners 7 days and 1 day before the end, on the due date, and every 2 days while overdue. After cover + grace days with no verified payment the property is suspended: website offline, and staff can only reach the Subscription page (to pay). A payment awaiting verification always prevents suspension. Complimentary and cancelled accounts are skipped; a property without any price is never suspended.
+
+**GST on bookEZ invoices:** CGST + SGST when the property's state (from its GSTIN if given, else the property's region) equals bookEZ's state; otherwise IGST. Invoices are numbered per Indian financial year — `BKZ/2026-27/00001` — gap-free and frozen once issued. The console's Tenants page shows collections this month and financial year, the amount awaiting verification and renewals due in the next 30 days.

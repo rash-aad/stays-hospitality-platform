@@ -6,7 +6,7 @@ export type TaxInvoiceData = {
   lines: { description: string; date?: string; quantity: number; amount: number; taxAmount: number; sac?: string; rateBps?: number }[];
   supplier: { legalName: string; tradeName: string; gstin: string | null; address: string; stateCode: string | null; stateName: string | null; phone: string | null; email: string | null };
   billTo: { name: string; company?: string | null; gstin?: string | null; address?: string | null; email?: string | null } | null;
-  taxSummary: { rateBps: number; taxable: number; cgst: number; sgst: number }[];
+  taxSummary: { rateBps: number; taxable: number; cgst: number; sgst: number; igst?: number }[];
   booking: { reference: string; checkIn: string; checkOut: string } | null;
   footerNote: string | null;
 };
@@ -19,6 +19,7 @@ export function TaxInvoice({ inv }: { inv: TaxInvoiceData }) {
   const s = inv.supplier;
   const draft = !inv.issuedAt;
   const c = inv.currency;
+  const igst = inv.taxSummary.reduce((a, t) => a + (t.igst ?? 0), 0);
   return (
     <article className="tax-invoice mx-auto max-w-[800px] bg-white p-8 text-[13px] leading-relaxed text-neutral-900 print:p-0" data-testid="tax-invoice">
       <header className="flex items-start justify-between gap-6 border-b border-neutral-300 pb-5">
@@ -71,15 +72,17 @@ export function TaxInvoice({ inv }: { inv: TaxInvoiceData }) {
       </table>
       <div className="mt-5 grid grid-cols-2 gap-8">
         <table className="self-start text-xs">
-          <thead><tr className="text-left text-neutral-500"><th className="pb-1 font-normal">Rate</th><th className="pb-1 text-right font-normal">Taxable</th><th className="pb-1 text-right font-normal">CGST</th><th className="pb-1 text-right font-normal">SGST</th></tr></thead>
+          <thead><tr className="text-left text-neutral-500"><th className="pb-1 font-normal">Rate</th><th className="pb-1 text-right font-normal">Taxable</th>{igst ? <th className="pb-1 text-right font-normal">IGST</th> : <><th className="pb-1 text-right font-normal">CGST</th><th className="pb-1 text-right font-normal">SGST</th></>}</tr></thead>
           <tbody>{inv.taxSummary.filter((t) => t.rateBps > 0).map((t) => (
-            <tr key={t.rateBps}><td>{pct(t.rateBps)}</td><td className="text-right tabular-nums">{amt(t.taxable, c)}</td><td className="text-right tabular-nums">{amt(t.cgst, c)}</td><td className="text-right tabular-nums">{amt(t.sgst, c)}</td></tr>
+            <tr key={t.rateBps}><td>{pct(t.rateBps)}</td><td className="text-right tabular-nums">{amt(t.taxable, c)}</td>{igst ? <td className="text-right tabular-nums">{amt(t.igst ?? 0, c)}</td> : <><td className="text-right tabular-nums">{amt(t.cgst, c)}</td><td className="text-right tabular-nums">{amt(t.sgst, c)}</td></>}</tr>
           ))}</tbody>
         </table>
         <dl className="space-y-1">
           <div className="flex justify-between"><dt>Taxable value</dt><dd className="tabular-nums">{amt(inv.subtotal, c)}</dd></div>
-          <div className="flex justify-between"><dt>CGST</dt><dd className="tabular-nums">{amt(inv.taxSummary.reduce((a, t) => a + t.cgst, 0), c)}</dd></div>
-          <div className="flex justify-between"><dt>SGST</dt><dd className="tabular-nums">{amt(inv.taxSummary.reduce((a, t) => a + t.sgst, 0), c)}</dd></div>
+          {igst ? <div className="flex justify-between"><dt>IGST</dt><dd className="tabular-nums">{amt(igst, c)}</dd></div> : <>
+            <div className="flex justify-between"><dt>CGST</dt><dd className="tabular-nums">{amt(inv.taxSummary.reduce((a, t) => a + t.cgst, 0), c)}</dd></div>
+            <div className="flex justify-between"><dt>SGST</dt><dd className="tabular-nums">{amt(inv.taxSummary.reduce((a, t) => a + t.sgst, 0), c)}</dd></div>
+          </>}
           <div className="flex justify-between border-t border-neutral-300 pt-1 text-base font-semibold"><dt>Total</dt><dd className="tabular-nums" data-testid="tax-invoice-total">{amt(inv.total, c)}</dd></div>
           <div className="flex justify-between text-neutral-600"><dt>Paid</dt><dd className="tabular-nums">{amt(inv.amountPaid, c)}</dd></div>
           <div className="flex justify-between font-medium"><dt>Balance</dt><dd className="tabular-nums">{amt(Math.max(0, inv.total - inv.amountPaid), c)}</dd></div>

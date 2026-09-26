@@ -1,5 +1,13 @@
 /** Built-in templates. Tenants override per key/channel in notification_templates. `{{var}}` is escaped on render. */
 export const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string; sms?: string }> = {
+  'subscription.notice': {
+    subject: '{{subject}}',
+    body: 'Hello {{name}},\n\n{{message}}\n\nYour subscription: {{link}}\n\n— bookEZ',
+  },
+  'platform.payment_review': {
+    subject: '{{subject}}',
+    body: '{{message}}\n\nReview it in the console: {{link}}',
+  },
   'report.daily': {
     subject: '{{property}} — daily report for {{date}}',
     body: 'Daily report for {{date}}\n\n{{body}}\n\nFull figures: Reports → Night audit.',

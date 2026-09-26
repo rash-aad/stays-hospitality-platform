@@ -259,6 +259,6 @@ export const authRoutes: Routes = async (app, { config }) => {
   });
 };
 
-function pickTenant(t: { id: string; slug: string; name: string; currency: string; timezone: string; modules: Set<string> } | null) {
-  return t && { id: t.id, slug: t.slug, name: t.name, currency: t.currency, timezone: t.timezone, modules: [...t.modules] };
+function pickTenant(t: { id: string; slug: string; name: string; currency: string; timezone: string; modules: Set<string>; billingLocked?: boolean } | null) {
+  return t && { id: t.id, slug: t.slug, name: t.name, currency: t.currency, timezone: t.timezone, modules: [...t.modules], billingLocked: !!t.billingLocked };
 }

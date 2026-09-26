@@ -25,7 +25,15 @@ export async function authenticate(req: FastifyRequest): Promise<void> {
     return;
   }
   const tenant = await loadTenant(claims.tid);
-  if (!tenant || tenant.status !== 'active') return;
+  if (!tenant) return;
+  if (tenant.status !== 'active') {
+    // Suspended for non-payment: staff keep access to sign-in and the Subscription page (so they can pay), nothing else.
+    if (!(tenant.billingLocked && claims.typ === 'staff')) return;
+    const path = req.url.split('?')[0]!;
+    if (!(path.startsWith('/api/v1/auth/') || path.startsWith('/api/v1/admin/subscription') || (path === '/api/v1/files' && req.method === 'POST'))) {
+      throw new AppError(402, 'subscription_suspended', 'This workspace is suspended until the bookEZ subscription is paid');
+    }
+  }
   // A token minted for one property is never honoured on another property's site.
   const siteHost = req.headers['x-tenant-host'];
   if (typeof siteHost === 'string' && siteHost) {

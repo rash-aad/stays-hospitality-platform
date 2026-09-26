@@ -84,7 +84,11 @@ export async function staffLogin(input: { email: string; password: string; tenan
     }
     const m = matches[0]!;
     if (m.user.status !== 'active') throw unauthorized('This account is not active');
-    if (m.user.tenantId && m.tenantStatus !== 'active') throw unauthorized('This workspace is suspended');
+    if (m.user.tenantId && m.tenantStatus !== 'active') {
+      const { tenantSubscriptions } = await import('@hp/db');
+      const [sub] = await tx.select({ reason: tenantSubscriptions.suspendedReason }).from(tenantSubscriptions).where(eq(tenantSubscriptions.tenantId, m.user.tenantId));
+      if (sub?.reason !== 'non_payment') throw unauthorized('This workspace is suspended');
+    }
     const isPlatform = m.user.isPlatformAdmin && !m.user.tenantId;
     if (isPlatform && input.allowPlatform && !input.allowPlatform(input.ip ?? '')) throw new AppError(403, 'ip_not_allowed', 'The platform console can’t be used from this network');
     await tx.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, m.user.id));

@@ -33,7 +33,23 @@ export const platformRoutes: Routes = async (app, { config }) => {
         })
         .from(tenants)
         .orderBy(tenants.name);
-      return { data: rows };
+      const { tenantSubscriptions } = await import('@hp/db');
+      const { subscriptionState } = await import('../subscriptions/model.js');
+      const { platformBilling } = await import('../subscriptions/settings.js');
+      const s = await platformBilling(tx);
+      const subs = new Map((await tx.select().from(tenantSubscriptions)).map((x) => [x.tenantId, x]));
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+      return {
+        data: rows.map((r) => {
+          const sub = subs.get(r.id);
+          if (!sub) return { ...r, subscription: null };
+          const st = subscriptionState(sub, today, sub.graceDays ?? s.graceDays, r.status === 'suspended');
+          const price = sub.cycle === 'yearly' ? sub.yearlyFee : sub.cycle === 'monthly' ? sub.monthlyFee : sub.monthlyFee ?? sub.yearlyFee;
+          const next = st.state === 'comp' ? 'None — complimentary' : st.state === 'cancelled' ? 'None — cancelled' : st.state === 'suspended' ? 'Awaiting payment to reactivate'
+            : st.state === 'overdue' || st.state === 'lapsed' ? `Suspends in ${Math.max(0, st.graceLeft)} d` : !sub.monthlyFee && !sub.yearlyFee ? 'Set pricing' : st.state === 'trial' ? `Trial ends in ${st.daysLeft} d` : `Renews in ${st.daysLeft} d`;
+          return { ...r, subscription: { state: st.state, cycle: sub.cycle, price, monthlyFee: sub.monthlyFee, yearlyFee: sub.yearlyFee, coveredUntil: st.coveredUntil, paidUntil: sub.paidUntil, nextAction: next } };
+        }),
+      };
     });
   });
 
@@ -49,6 +65,9 @@ export const platformRoutes: Routes = async (app, { config }) => {
         ownerEmail: z.string().email(),
         modules: z.array(z.string()).optional(),
         templateKey: z.string().optional(),
+        freeDays: z.number().int().min(0).max(3650).optional(),
+        monthlyFee: z.number().int().min(100).nullable().optional(),
+        yearlyFee: z.number().int().min(100).nullable().optional(),
       }),
     },
   }, async (req, reply) => {
@@ -58,6 +77,7 @@ export const platformRoutes: Routes = async (app, { config }) => {
         name: req.body.name, slug: req.body.slug, currency: req.body.currency, timezone: req.body.timezone, contactEmail: req.body.ownerEmail,
         modules: mods, templateKey: req.body.templateKey, rootDomain: config.PLATFORM_ROOT_DOMAIN,
         owner: { name: req.body.ownerName, email: req.body.ownerEmail },
+        subscription: { freeDays: req.body.freeDays, monthlyFee: req.body.monthlyFee ?? null, yearlyFee: req.body.yearlyFee ?? null },
       });
       const { properties, pages } = await import('@hp/db');
       await tx.insert(properties).values({ tenantId: r.tenant.id, name: req.body.name, slug: 'main', timezone: req.body.timezone });

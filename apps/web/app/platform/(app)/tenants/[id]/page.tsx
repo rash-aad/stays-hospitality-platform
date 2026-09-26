@@ -6,6 +6,7 @@ import { ErrorNote, Loading, PageHeader, Section, Status, useAction } from '@/co
 import { staffApi } from '@/lib/api';
 import { dateTime } from '@/lib/format';
 import { useStaff } from '@/lib/hooks';
+import { PlatformSubscription } from '@/components/platform-subscription';
 
 type D = { id: string; name: string; slug: string; status: string; currency: string; timezone: string; staffCount: number; bookingCount: number; createdAt: string; domains: { id: string; hostname: string; verifiedAt: string | null; isPrimary: boolean }[]; modules: { key: string; name: string; group: string; requires: string[]; enabled: boolean }[]; recentActivity: { id: string; action: string; createdAt: string; actorType: string }[] };
 
@@ -23,6 +24,7 @@ export default function Tenant() {
       {!t ? <Loading /> : (
         <div className="grid gap-px bg-line lg:grid-cols-[1fr_380px]">
           <div className="bg-panel">
+            <PlatformSubscription tenantId={id} />
             <Section title="Modules">
               <ul className="grid gap-x-8 sm:grid-cols-2">
                 {t.modules.map((m) => (

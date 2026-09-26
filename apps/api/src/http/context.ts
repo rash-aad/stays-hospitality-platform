@@ -8,6 +8,8 @@ export type TenantInfo = {
   currency: string;
   timezone: string;
   modules: Set<ModuleKey>;
+  /** Suspended by bookEZ billing: staff may sign in, but only to reach the Subscription page. */
+  billingLocked: boolean;
 };
 
 export type Actor =

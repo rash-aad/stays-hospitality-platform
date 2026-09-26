@@ -17,6 +17,8 @@ const schema = z.object({
   PLATFORM_ROOT_DOMAIN: z.string().default('localhost'),
   LOG_LEVEL: z.string().default('info'),
   WEB_INTERNAL_URL: z.string().default('http://localhost:3000'),
+  /** Super Admin console origin, for links in platform emails. */
+  CONSOLE_PUBLIC_URL: z.string().default('http://localhost:3001'),
   REVALIDATE_SECRET: z.string().optional(),
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),

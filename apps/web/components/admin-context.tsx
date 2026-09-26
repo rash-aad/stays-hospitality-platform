@@ -9,7 +9,7 @@ export type Me = {
   sharedDevice: string | null;
   isOwner: boolean;
   permissions: string[];
-  tenant: { id: string; slug: string; name: string; currency: string; timezone: string; modules: string[] };
+  tenant: { id: string; slug: string; name: string; currency: string; timezone: string; modules: string[]; billingLocked: boolean };
 };
 
 export const MeCtx = createContext<Me | null>(null);

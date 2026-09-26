@@ -7,3 +7,4 @@ export * from './payments.js';
 export * from './restaurant.js';
 export * from './services.js';
 export * from './content.js';
+export * from './subscriptions.js';

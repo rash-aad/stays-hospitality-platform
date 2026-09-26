@@ -241,7 +241,7 @@ function Domains({ site, reload }: { site: Site; reload: () => void }) {
                 <p className="mb-2 text-[13px]">Add these records at your domain provider, then press Check now:</p>
                 <table className="w-full font-mono"><tbody>
                   <tr><td className="pr-3 text-muted">TXT</td><td className="pr-3 select-all">{d.txtRecord.name}</td><td className="select-all break-all">{d.txtRecord.value}</td><td><button className="font-sans underline" onClick={() => { navigator.clipboard.writeText(d.txtRecord!.value); toast('Copied'); }}>copy</button></td></tr>
-                  <tr><td className="pr-3 text-muted">CNAME</td><td className="pr-3">{d.hostname}</td><td>sites.stays.app</td><td /></tr>
+                  <tr><td className="pr-3 text-muted">CNAME</td><td className="pr-3">{d.hostname}</td><td>sites.bookez.in</td><td /></tr>
                 </tbody></table>
               </div>
             )}

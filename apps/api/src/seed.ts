@@ -339,6 +339,8 @@ async function seedPrintworks() {
 await asSystem(async (tx) => {
   const { syncPermissions } = await import('./domain/tenants/provision.js');
   await syncPermissions(tx);
+  const { savePlatformBilling, DEFAULT_PLATFORM_BILLING } = await import('./domain/subscriptions/settings.js');
+  await savePlatformBilling(tx, { ...DEFAULT_PLATFORM_BILLING, vpa: 'bookez@okhdfcbank', payeeName: 'bookEZ', legalName: 'bookEZ Technologies Private Limited', gstin: '29AAPFU0939F1ZR', address: '3rd Floor, 80 Feet Road, Indiranagar, Bengaluru 560038', stateCode: '29', email: 'billing@bookez.in' });
   await tx.insert(s.users).values({ tenantId: null, name: 'Platform Admin', email: 'admin@bookez.in', passwordHash: await hashPassword('Bookez!Admin2026'), isPlatformAdmin: true, emailVerifiedAt: new Date() });
 });
 const seabreezeId = await seedSeabreeze();

@@ -9,7 +9,7 @@ const ADMIN_PAGES = [
   '/admin', '/admin/reservations', '/admin/tape-chart', '/admin/cash-drawer', '/admin/night-audit', '/admin/revenue', '/admin/calendar', '/admin/guests', '/admin/payments', '/admin/messages', '/admin/feedback', '/admin/events',
   '/admin/dining/reservations', '/admin/dining/kitchen', '/admin/dining/menus', '/admin/requests', '/admin/housekeeping', '/admin/maintenance', '/admin/experiences',
   '/admin/site', '/admin/guide', '/admin/reports',
-  '/admin/settings/property', '/admin/settings/rates', '/admin/settings/payments', '/admin/settings/billing', '/admin/settings/channels', '/admin/settings/modules',
+  '/admin/settings/property', '/admin/settings/rates', '/admin/settings/payments', '/admin/settings/billing', '/admin/settings/subscription', '/admin/settings/channels', '/admin/settings/modules',
   '/admin/settings/staff', '/admin/settings/requests', '/admin/settings/notifications', '/admin/settings/integrations', '/admin/settings/security', '/admin/settings/audit', '/admin/account',
 ];
 const SITE_PAGES = ['/', '/rooms', '/dining', '/experiences', '/contact', '/book'];
@@ -56,7 +56,7 @@ test('platform console opens cleanly', async ({ browser }) => {
   await page.getByLabel('Password').fill('Bookez!Admin2026');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL(/\/platform$/);
-  await sweep(page, PLATFORM, ['/platform', '/platform/account'], 'platform', problems);
+  await sweep(page, PLATFORM, ['/platform', '/platform/payments', '/platform/settings', '/platform/account'], 'platform', problems);
   expect(problems, problems.join('\n')).toEqual([]);
 });
 
