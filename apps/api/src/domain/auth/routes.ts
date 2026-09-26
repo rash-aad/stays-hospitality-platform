@@ -12,6 +12,7 @@ import { siteUrl } from '../../lib/site-url.js';
 import { platformIpAllowed } from '../../lib/ip-allow.js';
 import { runtimeConfig } from '../../runtime.js';
 import { checkSecondFactor } from './mfa.js';
+import { deviceOf } from './device-routes.js';
 import { verifyMfaChallenge } from './tokens.js';
 import { cookieAudFor } from './http.js';
 import { COOKIE, loginLimit, refreshLimit, sessionOut, setRefreshCookie, type Audience } from './http.js';
@@ -107,9 +108,10 @@ export const authRoutes: Routes = async (app, { config }) => {
       return { kind: 'guest', guest: { id: g!.id, firstName: g!.firstName, lastName: g!.lastName, email: g!.email, phone: g!.phone }, tenant: pickTenant(req.tenant) };
     }
     const [u] = await asSystem((tx) => tx.select().from(users).where(eq(users.id, a.userId)));
-    const base = { id: u!.id, name: u!.name, email: u!.email, emailVerified: !!u!.emailVerifiedAt, mfaEnabled: !!u!.mfaEnabledAt, mfa: a.mfa ?? null };
+    const base = { id: u!.id, name: u!.name, email: u!.email, emailVerified: !!u!.emailVerifiedAt, mfaEnabled: !!u!.mfaEnabledAt, mfa: a.mfa ?? null, hasPin: !!u!.pinHash };
     if (a.type === 'platform') return { kind: 'platform', user: base };
-    return { kind: 'staff', user: base, isOwner: a.isOwner, permissions: [...a.permissions], tenant: pickTenant(req.tenant) };
+    const device = await deviceOf(req);
+    return { kind: 'staff', user: base, isOwner: a.isOwner, permissions: [...a.permissions], tenant: pickTenant(req.tenant), sharedDevice: device?.tenantId === a.tenantId ? device.name : null };
   });
 
   app.post('/auth/password/forgot', {

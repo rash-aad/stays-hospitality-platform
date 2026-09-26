@@ -56,6 +56,13 @@ const NAV: { group: string; items: Item[] }[] = [
 
 type Dash = { paymentsToVerify: number; openRequests: number; liveOrders: number; unreadMessages: number };
 
+/** Where to send someone who isn't signed in: the PIN pad on a shared device, else the password page; back here afterwards. */
+async function signInPath() {
+  const next = `?next=${encodeURIComponent(location.pathname)}`;
+  const shared = await fetch('/api/v1/auth/device').then((r) => r.ok).catch(() => false);
+  return `${shared ? '/admin/pin' : '/admin/login'}${location.pathname !== '/admin' ? next : ''}`;
+}
+
 export function AdminShell({ children, bare }: { children: ReactNode; bare?: boolean }) {
   const router = useRouter();
   const path = usePathname();
@@ -64,11 +71,11 @@ export function AdminShell({ children, bare }: { children: ReactNode; bare?: boo
 
   useEffect(() => {
     (async () => {
-      if (!(await refreshSession('staff'))) return router.replace('/admin/login');
+      if (!(await refreshSession('staff'))) return router.replace(await signInPath());
       const m = await api<Me | { kind: string }>('/auth/me');
       if (m.kind === 'platform') return router.replace('/platform');
       setMe(m as Me);
-    })().catch(() => router.replace('/admin/login'));
+    })().catch(async () => router.replace(await signInPath()));
   }, [router]);
   useEffect(() => setMenu(false), [path]);
 
@@ -124,7 +131,7 @@ export function AdminShell({ children, bare }: { children: ReactNode; bare?: boo
             <div className="border-t border-line px-4 py-3">
               <Link href="/admin/account" className="block truncate text-[13px] hover:underline">{me.user.name}</Link>
               <div className="mt-1 flex items-center justify-between">
-                <button className="text-xs text-muted hover:text-ink" onClick={async () => { await signOut('staff'); router.replace('/admin/login'); }}>Sign out</button>
+                <button className="text-xs text-muted hover:text-ink" onClick={async () => { await signOut('staff'); const shared = await fetch('/api/v1/auth/device').then((r) => r.ok).catch(() => false); router.replace(shared ? '/admin/pin' : '/admin/login'); }}>{me.sharedDevice ? 'Switch user' : 'Sign out'}</button>
                 <InstallPwa compact />
               </div>
             </div>

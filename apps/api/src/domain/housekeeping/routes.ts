@@ -1,5 +1,9 @@
 import { entityEvents, housekeepingTasks, lostAndFound, rooms, roomTypes, stays, bookings, users, maintenanceTickets } from '@hp/db';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import QRCode from 'qrcode';
+import { forbidden } from '../../http/errors.js';
+import { reference } from '../../lib/ids.js';
+import { runtimeConfig } from '../../runtime.js';
+import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { crud, isoDate } from '../../http/crud.js';
 import { badRequest, conflict, notFound } from '../../http/errors.js';
@@ -175,6 +179,85 @@ export const housekeepingRoutes: Routes = async (app) => {
   }, async (req) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => ({ data: await transitionTask(tx, t, req.params.id, req.body.status, staffActor(req).userId, req.body.notes) }));
+  });
+
+  // ---------------- Scan-to-clean (a QR code on each room door opens its page on a phone) ----------------
+  const OPEN = ['pending', 'in_progress', 'done', 'failed_inspection'] as const;
+  async function scanView(tx: Tx, tenant: TenantInfo, roomId: string) {
+    const [room] = await tx.select({ r: rooms, type: roomTypes.name }).from(rooms).innerJoin(roomTypes, eq(roomTypes.id, rooms.roomTypeId)).where(and(eq(rooms.id, roomId), eq(rooms.tenantId, tenant.id)));
+    if (!room) throw notFound('Room');
+    const today = todayIn(tenant.timezone);
+    const [stay] = await tx.select({ checkOut: bookings.checkOut }).from(stays).innerJoin(bookings, eq(bookings.id, stays.bookingId)).where(and(eq(stays.roomId, roomId), eq(stays.status, 'in_house')));
+    const [task] = await tx.select({ t: housekeepingTasks, assignee: users.name }).from(housekeepingTasks).leftJoin(users, eq(users.id, housekeepingTasks.assignedUserId))
+      .where(and(eq(housekeepingTasks.roomId, roomId), lte(housekeepingTasks.scheduledFor, today), inArray(housekeepingTasks.status, [...OPEN])))
+      .orderBy(desc(housekeepingTasks.scheduledFor), sql`case ${housekeepingTasks.priority} when 'urgent' then 0 when 'high' then 1 when 'normal' then 2 else 3 end`).limit(1);
+    return {
+      room: { id: room.r.id, number: room.r.number, floor: room.r.floor, type: room.type, housekeepingStatus: room.r.housekeepingStatus, status: room.r.status, notes: room.r.notes },
+      occupancy: stay ? (stay.checkOut === today ? 'departing' : 'occupied') : 'vacant',
+      task: task ? { ...task.t, assignee: task.assignee } : null,
+    };
+  }
+
+  app.get('/admin/housekeeping/rooms/:id/scan', { preHandler: requireStaff('housekeeping.manage'), schema: { tags: ['housekeeping'], params: idParam } }, async (req) => {
+    const t = tenantOf(req);
+    return withTenant(t.id, async (tx) => ({ data: await scanView(tx, t, req.params.id) }));
+  });
+
+  app.post('/admin/housekeeping/rooms/:id/scan', {
+    preHandler: requireStaff('housekeeping.manage'),
+    schema: { tags: ['housekeeping'], params: idParam, body: z.object({ action: z.enum(['start', 'done', 'inspected', 'failed']), notes: z.string().max(500).optional() }) },
+  }, async (req) => {
+    const t = tenantOf(req);
+    const me = staffActor(req);
+    return withTenant(t.id, async (tx) => {
+      const view = await scanView(tx, t, req.params.id);
+      let task = view.task;
+      const { action } = req.body;
+      if (!task) {
+        if (action !== 'start') throw conflict('There’s no cleaning task for this room today — tap Start to begin one');
+        const [created] = await tx.insert(housekeepingTasks).values({ tenantId: t.id, propertyId: (await tx.select({ p: rooms.propertyId }).from(rooms).where(eq(rooms.id, req.params.id)))[0]!.p, roomId: req.params.id, kind: 'touch_up', scheduledFor: todayIn(t.timezone), assignedUserId: me.userId }).returning();
+        task = { ...created!, assignee: null };
+      }
+      if (action === 'start' && !task.assignedUserId) await tx.update(housekeepingTasks).set({ assignedUserId: me.userId }).where(eq(housekeepingTasks.id, task.id));
+      const to = ({ start: 'in_progress', done: 'done', inspected: 'inspected', failed: 'failed_inspection' } as const)[action];
+      if (task.status !== to) await transitionTask(tx, t, task.id, to, me.userId, req.body.notes);
+      return { data: await scanView(tx, t, req.params.id) };
+    });
+  });
+
+  /** Report a fault from the room: becomes a maintenance ticket (and can take the room out of service). */
+  app.post('/admin/housekeeping/rooms/:id/issue', {
+    preHandler: requireStaff('housekeeping.manage'),
+    schema: {
+      tags: ['housekeeping'], params: idParam,
+      body: z.object({ title: z.string().trim().min(3).max(120), category: z.enum(['electrical', 'plumbing', 'hvac', 'furniture', 'appliance', 'structural', 'it', 'other']), description: z.string().max(2000).optional(), blocksRoom: z.boolean().default(false), attachmentIds: z.array(z.string().uuid()).max(5).optional() }),
+    },
+  }, async (req, reply) => {
+    const t = tenantOf(req);
+    if (!t.modules.has('maintenance')) throw forbidden('Maintenance isn’t switched on for this property');
+    const me = staffActor(req);
+    const m = await withTenant(t.id, async (tx) => {
+      const [room] = await tx.select().from(rooms).where(and(eq(rooms.id, req.params.id), eq(rooms.tenantId, t.id)));
+      if (!room) throw notFound('Room');
+      const { attachmentIds, ...b } = req.body;
+      const [m] = await tx.insert(maintenanceTickets).values({ ...b, tenantId: t.id, propertyId: room.propertyId, roomId: room.id, locationLabel: `Room ${room.number}`, reference: reference('MT'), priority: b.blocksRoom ? 'high' : 'normal', severity: b.blocksRoom ? 'major' : 'minor', status: 'open', reportedByType: 'staff', reportedById: me.userId }).returning();
+      for (const id of attachmentIds ?? []) await tx.insert(entityEvents).values({ tenantId: t.id, entityType: 'maintenance_ticket', entityId: m!.id, kind: 'attachment', body: id, actorType: 'user', actorId: me.userId });
+      if (b.blocksRoom) {
+        await tx.update(rooms).set({ status: 'out_of_service', housekeepingStatus: 'out_of_service' }).where(eq(rooms.id, room.id));
+        await resyncTotals(tx, room.roomTypeId);
+      }
+      await audit(tx, req, { action: 'maintenance.create', entityType: 'maintenance_ticket', entityId: m!.id, changes: { via: 'room_scan' } });
+      return m!;
+    });
+    return reply.status(201).send({ data: m });
+  });
+
+  /** Printable sheet: one QR per room that opens its scan page. */
+  app.get('/admin/housekeeping/qr-codes', { preHandler: requireStaff('housekeeping.manage'), schema: { tags: ['housekeeping'] } }, async (req) => {
+    const t = tenantOf(req);
+    const list = await withTenant(t.id, (tx) => tx.select({ id: rooms.id, number: rooms.number, floor: rooms.floor, type: roomTypes.name }).from(rooms).innerJoin(roomTypes, eq(roomTypes.id, rooms.roomTypeId)).where(eq(rooms.tenantId, t.id)).orderBy(rooms.number));
+    const base = runtimeConfig().WEB_PUBLIC_URL.replace(/\/$/, '');
+    return { data: await Promise.all(list.map(async (r) => ({ ...r, url: `${base}/admin/hk/${r.id}`, qr: await QRCode.toString(`${base}/admin/hk/${r.id}`, { type: 'svg', margin: 1 }) }))) };
   });
 
   crud(app, {

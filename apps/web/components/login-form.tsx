@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { ApiError, setAccessToken } from '@/lib/api';
 import { useHydrated } from '@/lib/hooks';
@@ -9,6 +9,8 @@ import { PLATFORM_URL } from '@/lib/surface';
 /** Sign-in for staff (surface "admin") and platform administrators (surface "platform"). */
 export function LoginForm({ surface }: { surface: 'admin' | 'platform' }) {
   const router = useRouter();
+  const nextParam = useSearchParams().get('next');
+  const next = nextParam && /^\/admin(\/[\w/-]*)?$/.test(nextParam) ? nextParam : '/admin';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [workspaces, setWorkspaces] = useState<{ slug: string; name: string }[] | null>(null);
@@ -54,7 +56,7 @@ export function LoginForm({ surface }: { surface: 'admin' | 'platform' }) {
         throw new Error(surface === 'platform' ? 'This console is for platform administrators. Hotel staff sign in at /admin/login.' : `Platform administrators sign in at ${PLATFORM_URL}`);
       }
       setAccessToken('staff', j.accessToken);
-      router.replace(j.kind === 'platform' ? '/platform' : '/admin');
+      router.replace(j.kind === 'platform' ? '/platform' : next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed');
     } finally {
@@ -94,6 +96,7 @@ export function LoginForm({ surface }: { surface: 'admin' | 'platform' }) {
           <button className="btn btn-primary btn-lg w-full" disabled={busy || !ready}>{busy ? 'Please wait…' : forgot ? 'Send reset link' : 'Sign in'}</button>
         </>
       )}
+      {surface === 'admin' && !challenge && !forgot && <a className="block text-[13px] text-muted underline underline-offset-2" href={`/admin/pin${nextParam ? `?next=${encodeURIComponent(next)}` : ''}`}>Shared device? Sign in with your PIN</a>}
       {challenge ? (
         <button type="button" className="text-[13px] text-muted underline underline-offset-2" onClick={() => { setChallenge(null); setCode(''); setError(null); }}>Back</button>
       ) : (

@@ -33,7 +33,7 @@ export default function Housekeeping() {
     <>
       <PageHeader title="Housekeeping"
         sub={b && `${b.summary.dirty ?? 0} dirty · ${b.summary.clean ?? 0} clean · ${b.summary.inspected ?? 0} inspected · ${b.summary.tasksPending} tasks waiting · ${b.summary.awaitingInspection} to inspect`}
-        actions={<><input className="input w-36" type="date" value={date} onChange={(e) => setDate(e.target.value)} /><button className="btn" disabled={busy} onClick={() => run(() => staffApi<{ data: { created: number } }>('/admin/housekeeping/generate', { body: { date } }), 'Stayover cleans generated').then(() => mutate())}>Generate stayovers</button></>}>
+        actions={<><input className="input w-36" type="date" value={date} onChange={(e) => setDate(e.target.value)} /><button className="btn" disabled={busy} onClick={() => run(() => staffApi<{ data: { created: number } }>('/admin/housekeeping/generate', { body: { date } }), 'Stayover cleans generated').then(() => mutate())}>Generate stayovers</button><a className="btn" href="/admin/housekeeping-qr" target="_blank" rel="noreferrer">Room QR codes</a></>}>
         <Tabs value={tab} onChange={setTab} items={[{ value: 'board', label: 'Room board' }, { value: 'lost', label: 'Lost & found' }]} />
       </PageHeader>
       <ErrorNote error={error} />

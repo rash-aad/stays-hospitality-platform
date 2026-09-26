@@ -27,7 +27,7 @@ export type Session = { accessToken: string; expiresIn: number; refreshToken: st
 export async function issueSession(
   tx: Tx,
   claims: AccessClaims,
-  opts: { userAgent?: string; familyId?: string; ip?: string; deviceId?: string | null } = {},
+  opts: { userAgent?: string; familyId?: string; ip?: string; deviceId?: string | null; ttlHours?: number; expiresAt?: Date } = {},
 ): Promise<Session> {
   const refreshToken = randomToken(48);
   await tx.insert(refreshTokens).values({
@@ -37,7 +37,7 @@ export async function issueSession(
     guestId: claims.typ === 'guest' ? claims.sub : null,
     tokenHash: sha256(refreshToken),
     familyId: opts.familyId ?? randomUUID(),
-    expiresAt: new Date(Date.now() + REFRESH_TTL_DAYS * 86400_000),
+    expiresAt: opts.expiresAt ?? new Date(Date.now() + (opts.ttlHours ? opts.ttlHours * 3600_000 : REFRESH_TTL_DAYS * 86400_000)),
     userAgent: opts.userAgent?.slice(0, 300),
   });
   return { accessToken: await signAccess(claims), expiresIn: ACCESS_TTL_SECONDS, refreshToken, claims };
@@ -126,13 +126,13 @@ export async function rotateRefresh(token: string, userAgent?: string) {
     return 'stolen' as const;
   });
   if (outcome === 'stolen') throw unauthorized('Session expired');
-  if (typeof outcome === 'object') return asSystem(async (tx) => issueSession(tx, await claimsFor(tx, outcome.grace), { userAgent, familyId: outcome.grace.familyId, ip: outcome.grace.ip ?? undefined, deviceId: outcome.grace.deviceId }));
+  if (typeof outcome === 'object') return asSystem(async (tx) => issueSession(tx, await claimsFor(tx, outcome.grace), { userAgent, familyId: outcome.grace.familyId, ip: outcome.grace.ip ?? undefined, deviceId: outcome.grace.deviceId, expiresAt: outcome.grace.deviceId ? outcome.grace.expiresAt : undefined }));
   return asSystem(async (tx) => {
     const [row] = await tx.select().from(refreshTokens).where(eq(refreshTokens.tokenHash, sha256(token))).for('update');
     if (!row || row.revokedAt) throw unauthorized('Session expired');
     if (row.expiresAt < new Date()) throw unauthorized('Session expired');
     await tx.update(refreshTokens).set({ revokedAt: new Date() }).where(eq(refreshTokens.id, row.id));
-    return issueSession(tx, await claimsFor(tx, row), { userAgent, familyId: row.familyId, ip: row.ip ?? undefined, deviceId: row.deviceId });
+    return issueSession(tx, await claimsFor(tx, row), { userAgent, familyId: row.familyId, ip: row.ip ?? undefined, deviceId: row.deviceId, expiresAt: row.deviceId ? row.expiresAt : undefined });
   });
 }
 

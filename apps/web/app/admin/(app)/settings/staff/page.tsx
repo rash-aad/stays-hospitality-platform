@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMe } from '@/components/admin-context';
 import { Drawer, ErrorNote, Field, Loading, PageHeader, Section, Status, Tabs, cx, useAction } from '@/components/ui';
 import { staffApi } from '@/lib/api';
@@ -12,7 +12,8 @@ type Role = { id: string; key: string; name: string; isSystem: boolean; permissi
 
 export default function StaffPage() {
   const me = useMe();
-  const [tab, setTab] = useState<'people' | 'roles'>('people');
+  const [tab, setTab] = useState<'people' | 'roles' | 'devices'>('people');
+  useEffect(() => { if (location.hash === '#devices') setTab('devices'); }, []);
   const { data: people, error, mutate } = useStaff<{ data: Staff[] }>('/admin/staff?pageSize=200');
   const { data: roles, mutate: mr } = useStaff<{ data: Role[]; catalog: { key: string; description: string }[] }>('/admin/roles');
   const [edit, setEdit] = useState<{ id?: string; name: string; email: string; roleIds: string[]; status?: string; mfaEnabled?: boolean } | null>(null);
@@ -20,11 +21,11 @@ export default function StaffPage() {
   const { busy, run } = useAction();
   return (
     <>
-      <PageHeader title="Staff & roles" actions={tab === 'people' ? <button className="btn btn-primary" onClick={() => setEdit({ name: '', email: '', roleIds: [] })}>Invite staff</button> : <button className="btn btn-primary" onClick={() => setRole({ name: '', permissions: [] })}>New role</button>}>
-        <Tabs value={tab} onChange={setTab} items={[{ value: 'people', label: 'People' }, { value: 'roles', label: 'Roles & permissions' }]} />
+      <PageHeader title="Staff & roles" actions={tab === 'devices' ? null : tab === 'people' ? <button className="btn btn-primary" onClick={() => setEdit({ name: '', email: '', roleIds: [] })}>Invite staff</button> : <button className="btn btn-primary" onClick={() => setRole({ name: '', permissions: [] })}>New role</button>}>
+        <Tabs value={tab} onChange={setTab} items={[{ value: 'people', label: 'People' }, { value: 'roles', label: 'Roles & permissions' }, { value: 'devices', label: 'Shared devices' }]} />
       </PageHeader>
       <ErrorNote error={error} />
-      {tab === 'people' ? (!people ? <Loading /> : (
+      {tab === 'devices' ? <SharedDevices /> : tab === 'people' ? (!people ? <Loading /> : (
         <div className="bg-panel">
           <table className="tbl">
             <thead><tr><th>Name</th><th>Roles</th><th>Status</th><th>Two-step</th><th>Last sign-in</th></tr></thead>
@@ -90,5 +91,40 @@ export default function StaffPage() {
         )}
       </Drawer>
     </>
+  );
+}
+
+type Device = { id: string; name: string; lastSeenAt: string | null; createdAt: string; createdBy: string | null; current: boolean };
+
+/** Shared tablets/phones where staff sign in with a PIN. Enrolling happens on the device itself. */
+function SharedDevices() {
+  const { data, mutate } = useStaff<{ data: Device[] }>('/admin/devices');
+  const { busy, run } = useAction();
+  const [name, setName] = useState('');
+  const here = data?.data.find((d) => d.current);
+  return (
+    <div className="max-w-3xl bg-panel">
+      <Section title="This device">
+        {here ? <p className="text-[13px]">This browser is the shared device <b>{here.name}</b>. Staff sign in at <a className="underline" href="/admin/pin">/admin/pin</a> with their PIN; sessions end after 12 hours.</p> : (
+          <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); run(() => staffApi('/admin/devices', { body: { name } }), 'This device is now a shared device').then((r) => { if (r) { location.hash = 'devices'; location.reload(); } }); }}>
+            <Field label="Make this browser a shared device" hint="Do this on the front-desk tablet or housekeeping phone itself." className="flex-1"><input className="input" placeholder="Front desk iPad" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+            <button className="btn btn-primary" disabled={busy || name.trim().length < 2}>Set up</button>
+          </form>
+        )}
+      </Section>
+      <Section title="Shared devices">
+        {!data ? <Loading rows={2} /> : data.data.length === 0 ? <p className="text-[13px] text-muted">None yet.</p> : (
+          <ul className="divide-y divide-line text-[13px]" data-testid="devices">
+            {data.data.map((d) => (
+              <li key={d.id} className="flex items-center justify-between py-2">
+                <span>{d.name}{d.current && <span className="chip chip-accent ml-2">This device</span>}<span className="block text-xs text-muted">Set up by {d.createdBy ?? '—'} · last used {d.lastSeenAt ? ago(d.lastSeenAt) : 'never'}</span></span>
+                <button className="btn btn-sm btn-danger" disabled={busy} onClick={() => run(() => staffApi(`/admin/devices/${d.id}`, { method: 'DELETE' }), 'Device removed — its shift sessions have ended').then(() => mutate())}>Remove</button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-[13px] text-muted">Each person sets their own PIN in Your account. Owners can’t use PIN sign-in.</p>
+      </Section>
+    </div>
   );
 }

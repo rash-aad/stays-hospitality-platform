@@ -69,3 +69,9 @@ The platform console (`/platform`) is served only on `PLATFORM_HOST`; every othe
 - Platform admins must use it in production (`PLATFORM_REQUIRE_MFA`, default on when `NODE_ENV=production`). `PLATFORM_IP_ALLOWLIST` (comma-separated IPs/CIDRs) restricts the console at the API.
 - Lost phone: an owner uses **Staff & roles → Reset two-step**, which also signs that person out everywhere.
 - **Your account → Where you’re signed in** lists devices and can sign out the others.
+
+## Shared devices, PIN sign-in and scan-to-clean
+
+- A manager opens **Settings → Staff & roles → Shared devices** *on the tablet or phone itself* and sets it up; the browser gets a long-lived httpOnly device cookie. Removing a device ends every shift session on it.
+- Staff set a 4–6 digit PIN in **Your account** (guessable PINs like 1234 or 0000 are refused). On a shared device they tap their name at `/admin/pin`; the session lasts one 12-hour shift and counts as two-step sign-in (device + PIN). Five wrong PINs lock PIN sign-in for 15 minutes. Owners always use their password.
+- **Housekeeping → Room QR codes** prints a code per room. Scanning opens the room’s page: start/finish the clean, pass or fail inspection, or report a fault (becomes a maintenance ticket and can take the room out of sale).
