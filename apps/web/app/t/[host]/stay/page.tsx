@@ -19,6 +19,7 @@ export default function StayHome() {
             <div><dt className="t-muted text-xs">Check-out</dt><dd>by {home.property?.checkOutTime.slice(0, 5)}</dd></div>
             <div><dt className="t-muted text-xs">Booking</dt><dd className="font-mono text-xs leading-5">{s.reference}</dd></div>
           </dl>
+          {!s.inHouse && <a href={`/stay/checkin/${s.bookingId}`} className="t-btn t-btn-outline mt-5 w-full" data-testid="precheckin-link">Check in online</a>}
           {!s.inHouse && <p className="mt-4 text-sm t-muted">Room service and housekeeping open up here once you’ve checked in. You can already book tables, experiences and your airport transfer.</p>}
         </section>
       ) : (

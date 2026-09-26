@@ -217,3 +217,35 @@ export const addOns = pgTable('add_ons', {
   per: text('per', { enum: ['stay', 'night', 'guest', 'guest_night'] }).notNull().default('stay'),
   active: boolean('active').notNull().default(true),
 });
+
+/** Calendar sync with OTAs/channel managers: export our availability, import their reservations as blocks. */
+export const icalFeeds = pgTable('ical_feeds', {
+  id: id(),
+  tenantId: tenantId(),
+  roomTypeId: uuid('room_type_id').notNull().references(() => roomTypes.id, { onDelete: 'cascade' }),
+  direction: text('direction', { enum: ['export', 'import'] }).notNull(),
+  name: text('name').notNull(),
+  url: text('url'),
+  token: text('token'),
+  lastSyncAt: ts('last_sync_at'),
+  lastError: text('last_error'),
+  createdAt: createdAt(),
+});
+
+/** A night range held by an external channel (from an imported iCal feed); it consumes inventory like a booking. */
+export const externalBlocks = pgTable(
+  'external_blocks',
+  {
+    id: id(),
+    tenantId: tenantId(),
+    feedId: uuid('feed_id').notNull().references(() => icalFeeds.id, { onDelete: 'cascade' }),
+    roomTypeId: uuid('room_type_id').notNull().references(() => roomTypes.id, { onDelete: 'cascade' }),
+    uid: text('uid').notNull(),
+    summary: text('summary'),
+    startDate: date('start_date').notNull(),
+    endDate: date('end_date').notNull(),
+    status: text('status', { enum: ['held', 'conflict'] }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('external_blocks_feed_uid_uq').on(t.feedId, t.uid)],
+);

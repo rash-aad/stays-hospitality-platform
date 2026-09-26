@@ -7,7 +7,9 @@ export type JobName =
   | 'expire-holds'
   | 'reconcile-gateway'
   | 'sla-sweep'
-  | 'generate-housekeeping';
+  | 'generate-housekeeping'
+  | 'reminders'
+  | 'ical-sync';
 
 let queue: Queue | null = null;
 let connection: Redis | null = null;
@@ -28,6 +30,8 @@ export async function scheduleRepeating() {
   await queue.upsertJobScheduler('expire-holds', { every: 60_000 }, { name: 'expire-holds', data: {} });
   await queue.upsertJobScheduler('sla-sweep', { every: 60_000 }, { name: 'sla-sweep', data: {} });
   await queue.upsertJobScheduler('reconcile-gateway', { every: 5 * 60_000 }, { name: 'reconcile-gateway', data: {} });
+  await queue.upsertJobScheduler('reminders', { every: 10 * 60_000 }, { name: 'reminders', data: {} });
+  await queue.upsertJobScheduler('ical-sync', { every: 30 * 60_000 }, { name: 'ical-sync', data: {} });
   await queue.upsertJobScheduler('generate-housekeeping', { pattern: '0 30 0 * * *' }, { name: 'generate-housekeeping', data: {} });
 }
 

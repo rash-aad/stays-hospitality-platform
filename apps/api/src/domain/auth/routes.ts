@@ -1,6 +1,7 @@
+import { createHash } from 'node:crypto';
 import { guests, properties, tenants, users } from '@hp/db';
 import { and, eq, sql } from 'drizzle-orm';
-import type { FastifyReply } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AppError, badRequest, unauthorized } from '../../http/errors.js';
 import { resolvePublicTenant, tenantOf } from '../../http/guards.js';
@@ -14,11 +15,33 @@ import {
   staffLogin, validatePasswordStrength, verifyPassword, REFRESH_TTL_DAYS, type Session,
 } from './service.js';
 
-const COOKIE = { staff: 'hp_rt_staff', guest: 'hp_rt_guest' } as const;
+const COOKIE = { staff: 'hp_rt_staff', guest: 'hp_rt_guest', platform: 'hp_rt_platform' } as const; // platform sessions get their own cookie so a hotel login in the same browser can't clobber them
 type Audience = keyof typeof COOKIE;
 
 const sessionOut = z.object({ accessToken: z.string(), expiresIn: z.number() });
-const loginLimit = { rateLimit: { max: 10, timeWindow: '1 minute' } };
+/**
+ * Sign-in style endpoints: 10 a minute per address *and account* — staff at one hotel share an IP, so a
+ * pure per-IP limit would lock out a whole front desk at shift change. The global per-IP limit still applies.
+ */
+const loginLimit = {
+  rateLimit: {
+    max: 10, timeWindow: '1 minute', hook: 'preHandler' as const,
+    keyGenerator: (req: FastifyRequest) => {
+      const email = (req.body as { email?: unknown } | undefined)?.email;
+      return typeof email === 'string' ? `${req.ip}|${email.toLowerCase()}` : req.ip;
+    },
+  },
+};
+/** Refresh is limited per session (hashed cookie), not per IP, for the same shared-NAT reason. */
+const refreshLimit = {
+  rateLimit: {
+    max: 60, timeWindow: '1 minute',
+    keyGenerator: (req: FastifyRequest) => {
+      const c = req.cookies?.[COOKIE[(req.query as { aud?: Audience }).aud ?? 'staff']] ?? req.cookies?.[COOKIE.staff];
+      return c ? createHash('sha256').update(c).digest('base64url') : req.ip;
+    },
+  },
+};
 
 export const authRoutes: Routes = async (app, { config }) => {
   const secure = config.NODE_ENV === 'production';
@@ -44,12 +67,12 @@ export const authRoutes: Routes = async (app, { config }) => {
   }, async (req, reply) => {
     const r = await staffLogin({ ...req.body, tenantSlug: req.body.workspace, userAgent: req.headers['user-agent'] });
     await asSystem((tx) => audit(tx, req, { action: 'auth.login', entityType: 'user', entityId: r.user.id, tenantId: 'tid' in r.session.claims ? r.session.claims.tid : null, actor: { type: r.session.claims.typ === 'platform' ? 'platform' : 'user', id: r.user.id } }));
-    return { ...setRefresh(reply, 'staff', r.session), user: r.user, kind: r.session.claims.typ === 'platform' ? 'platform' as const : 'staff' as const, workspace: r.tenant };
+    return { ...setRefresh(reply, r.session.claims.typ === 'platform' ? 'platform' : 'staff', r.session), user: r.user, kind: r.session.claims.typ === 'platform' ? 'platform' as const : 'staff' as const, workspace: r.tenant };
   });
 
   app.post('/auth/refresh', {
-    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
-    schema: { tags: ['auth'], querystring: z.object({ aud: z.enum(['staff', 'guest']).default('staff') }), response: { 200: sessionOut } },
+    config: refreshLimit,
+    schema: { tags: ['auth'], querystring: z.object({ aud: z.enum(['staff', 'guest', 'platform']).default('staff') }), response: { 200: sessionOut } },
   }, async (req, reply) => {
     assertCsrf(req.headers);
     const token = req.cookies[COOKIE[req.query.aud]];
@@ -58,7 +81,7 @@ export const authRoutes: Routes = async (app, { config }) => {
   });
 
   app.post('/auth/logout', {
-    schema: { tags: ['auth'], querystring: z.object({ aud: z.enum(['staff', 'guest']).default('staff') }) },
+    schema: { tags: ['auth'], querystring: z.object({ aud: z.enum(['staff', 'guest', 'platform']).default('staff') }) },
   }, async (req, reply) => {
     assertCsrf(req.headers);
     const token = req.cookies[COOKIE[req.query.aud]];

@@ -235,6 +235,7 @@ export const experienceBookings = pgTable(
     paymentMode: text('payment_mode', { enum: ['upi_manual', 'upi_gateway', 'room_charge', 'pay_at_property', 'free'] }).notNull(),
     paymentStatus: text('payment_status', { enum: ['unpaid', 'awaiting_payment', 'pending_verification', 'paid', 'charged_to_room', 'refunded', 'not_required'] }).notNull(),
     notes: text('notes'),
+    reminderSentAt: ts('reminder_sent_at'),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex('experience_bookings_ref_uq').on(t.tenantId, t.reference), check('eb_participants_ck', sql`${t.participants} >= 1`)],
@@ -258,3 +259,24 @@ export const eventInquiries = pgTable('event_inquiries', {
   notes: text('notes'),
   createdAt: createdAt(),
 });
+
+/** Post-stay feedback. Ratings 1–5 per aspect plus a 0–10 likelihood to recommend. */
+export const guestFeedback = pgTable(
+  'guest_feedback',
+  {
+    id: id(),
+    tenantId: tenantId(),
+    bookingId: uuid('booking_id').notNull(),
+    guestId: uuid('guest_id').notNull().references(() => guests.id),
+    overall: integer('overall').notNull(),
+    recommend: integer('recommend'),
+    aspects: jsonb('aspects').$type<Record<string, number>>().notNull().default({}),
+    comment: text('comment'),
+    publicConsent: boolean('public_consent').notNull().default(false),
+    staffReply: text('staff_reply'),
+    repliedByUserId: uuid('replied_by_user_id').references(() => users.id),
+    repliedAt: ts('replied_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('guest_feedback_booking_uq').on(t.bookingId), check('guest_feedback_overall_ck', sql`${t.overall} between 1 and 5`), check('guest_feedback_nps_ck', sql`${t.recommend} is null or ${t.recommend} between 0 and 10`)],
+);

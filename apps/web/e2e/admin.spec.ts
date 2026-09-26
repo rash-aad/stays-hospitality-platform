@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ADMIN, guard, linkFromEmail, SITE, staffPage, uniqueEmail } from './helpers';
+import { ADMIN, guard, linkFromEmail, OWNER, PLATFORM, SITE, staffPage, uniqueEmail } from './helpers';
 
 const ADMIN_PAGES = [
   '/admin', '/admin/reservations', '/admin/calendar', '/admin/guests', '/admin/payments', '/admin/messages', '/admin/events',
@@ -151,7 +151,9 @@ test('platform admin onboards a property whose site is live, then suspends it', 
   const ctx = await browser.newContext();
   const p = await ctx.newPage();
   const done = guard(p);
-  await p.goto(`${ADMIN}/admin/login`, { waitUntil: 'domcontentloaded' });
+  await p.goto(`${PLATFORM}/`, { waitUntil: 'domcontentloaded' });
+  await p.waitForURL(/\/platform\/login$/);
+  await expect(p.getByRole('button', { name: 'Sign in' })).toBeEnabled();
   await p.getByLabel('Email').fill('admin@stays.local');
   await p.getByLabel('Password').fill('Stays!Admin2026');
   await p.getByRole('button', { name: 'Sign in' }).click();
@@ -179,4 +181,31 @@ test('platform admin onboards a property whose site is live, then suspends it', 
   await p.getByRole('button', { name: 'Reactivate' }).click();
   await expect(p.getByText('Tenant reactivated')).toBeVisible();
   done();
+});
+
+test('the Super Admin console lives only on its own origin and admits only platform accounts', async ({ browser, request }) => {
+  // Not reachable from the hotel admin origin — pages or APIs.
+  expect((await request.get(`${ADMIN}/platform`)).status()).toBe(404);
+  expect((await request.get(`${ADMIN}/api/v1/platform/tenants`)).status()).toBe(404);
+  // The console origin serves nothing else.
+  expect((await request.get(`${PLATFORM}/admin/login`)).status()).toBe(404);
+  expect((await request.get(`${PLATFORM}/api/v1/public/site`)).status()).toBe(404);
+
+  const ctx = await browser.newContext();
+  const p = await ctx.newPage();
+  await p.goto(`${PLATFORM}/platform/login`, { waitUntil: 'domcontentloaded' });
+  await expect(p.getByRole('button', { name: 'Sign in' })).toBeEnabled();
+  await p.getByLabel('Email').fill(OWNER.email);
+  await p.getByLabel('Password').fill(OWNER.password);
+  await p.getByRole('button', { name: 'Sign in' }).click();
+  await expect(p.getByText('This console is for platform administrators')).toBeVisible();
+
+  // And the hotel admin sign-in points platform admins to the console.
+  await p.goto(`${ADMIN}/admin/login`, { waitUntil: 'domcontentloaded' });
+  await expect(p.getByRole('button', { name: 'Sign in' })).toBeEnabled();
+  await p.getByLabel('Email').fill('admin@stays.local');
+  await p.getByLabel('Password').fill('Stays!Admin2026');
+  await p.getByRole('button', { name: 'Sign in' }).click();
+  await expect(p.getByText(`Platform administrators sign in at ${PLATFORM}`)).toBeVisible();
+  await ctx.close();
 });

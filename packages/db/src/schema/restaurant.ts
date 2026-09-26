@@ -131,6 +131,8 @@ export const restaurantReservations = pgTable(
     internalNotes: text('internal_notes'),
     source: text('source', { enum: ['website', 'portal', 'admin', 'phone', 'walk_in'] }).notNull(),
     createdByUserId: uuid('created_by_user_id').references(() => users.id),
+    reminderSentAt: ts('reminder_sent_at'),
+    waitlistNotifiedAt: ts('waitlist_notified_at'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

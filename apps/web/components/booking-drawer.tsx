@@ -8,7 +8,7 @@ import { useCan } from './admin-context';
 import { Drawer, Field, Loading, Modal, Section, Status, useAction } from './ui';
 
 type Detail = {
-  booking: { id: string; reference: string; status: string; paymentStatus: string; checkIn: string; checkOut: string; adults: number; children: number; source: string; currency: string; subtotal: number; discount: number; taxTotal: number; total: number; amountPaid: number; specialRequests: string | null; arrivalTime: string | null; holdExpiresAt: string | null; cancellationFee: number | null; cancellationReason: string | null; createdAt: string };
+  booking: { precheckin: null | { arrivalTime: string | null; travellingBy: string | null; nationality: string | null; idType: string | null; idNumberLast4: string | null; idFileId: string | null; address: string | null; purposeOfVisit: string | null; guestNames: string[]; specialRequests: string | null }; precheckinAt: string | null; id: string; reference: string; status: string; paymentStatus: string; checkIn: string; checkOut: string; adults: number; children: number; source: string; currency: string; subtotal: number; discount: number; taxTotal: number; total: number; amountPaid: number; specialRequests: string | null; arrivalTime: string | null; holdExpiresAt: string | null; cancellationFee: number | null; cancellationReason: string | null; createdAt: string };
   guest: { id: string; firstName: string; lastName: string; email: string; phone: string | null; country: string | null; notes: string | null; tags: string[] };
   items: { id: string; kind: string; description: string; quantity: number; amount: number; taxAmount: number }[];
   stay: { status: string; roomNumber: string | null } | null;
@@ -99,8 +99,19 @@ export function BookingDrawer({ id, onClose, onChanged }: { id: string | null; o
             <div className="mt-3 flex flex-wrap gap-2">
               {write && balance > 0 && !['cancelled', 'expired'].includes(b.status) && <button className="btn btn-sm" onClick={() => { setForm({ amount: String(balance / 100) }); setModal('pay'); }}>Record payment</button>}
               <button className="btn btn-sm" disabled={busy} onClick={() => act('invoice', { issue: false }, 'Invoice updated')}>{d.invoice ? `Refresh ${d.invoice.number}` : 'Draft invoice'}</button>
+              {d.invoice && <a className="btn btn-sm" href={`/admin/invoice/${d.invoice.id}`} target="_blank" rel="noreferrer">Open invoice</a>}
             </div>
           </Section>
+          {b.precheckin && (
+            <Section title="Online check-in" actions={<span className="text-xs text-muted">{b.precheckinAt && dateTime(b.precheckinAt)}</span>}>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[13px]" data-testid="precheckin-details">
+                {([['Arriving', b.precheckin.arrivalTime], ['By', b.precheckin.travellingBy && human(b.precheckin.travellingBy)], ['Nationality', b.precheckin.nationality], ['Purpose', b.precheckin.purposeOfVisit && human(b.precheckin.purposeOfVisit)],
+                  ['ID', b.precheckin.idType && `${human(b.precheckin.idType)} ····${b.precheckin.idNumberLast4 ?? ''}`], ['Address', b.precheckin.address], ['With', b.precheckin.guestNames.join(', ')], ['Requests', b.precheckin.specialRequests]] as const)
+                  .filter(([, v]) => v).map(([k, v]) => <div key={k} className="contents"><dt className="text-muted">{k}</dt><dd>{v}</dd></div>)}
+              </dl>
+              {b.precheckin.idFileId && <p className="mt-2 text-[13px] text-muted">A copy of the ID was uploaded — verify the original at the desk.</p>}
+            </Section>
+          )}
           <Section title="Payments">
             {d.payments.length === 0 ? <p className="text-[13px] text-muted">No payments yet.</p> : (
               <ul className="divide-y divide-line text-[13px]">

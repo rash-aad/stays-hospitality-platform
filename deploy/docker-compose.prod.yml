@@ -7,10 +7,11 @@ services:
     volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data"]
     depends_on: [web]
   web:
-    build: { context: .., dockerfile: apps/web/Dockerfile }
+    build: { context: .., dockerfile: apps/web/Dockerfile, args: { NEXT_PUBLIC_PLATFORM_URL: "https://${CONSOLE_HOST}" } }
     environment:
       API_INTERNAL_URL: http://api:4000
       APP_HOSTS: ${APP_HOSTS}
+      PLATFORM_HOST: ${CONSOLE_HOST}
       REVALIDATE_SECRET: ${REVALIDATE_SECRET}
     depends_on: [api]
   api:

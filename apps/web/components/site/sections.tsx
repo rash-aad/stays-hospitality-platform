@@ -5,7 +5,7 @@ import { SECTION_MODULES } from '@hp/contracts';
 import { Fragment, useState, type ReactNode } from 'react';
 import { T, useEdit } from './edit';
 import type { SiteData } from './types';
-import { BookingBar, ContactForm, ReservationWidget } from './widgets';
+import { BookingBar, ContactForm, ReservationWidget, useHydrated } from './widgets';
 
 type P = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 type Img = { url: string; alt: string };
@@ -247,13 +247,14 @@ function Menu({ s, d }: { s: PageSection; d: SiteData }) {
   const rid = p.restaurantId ?? d.restaurants.find((r) => d.menus[r.id]?.length)?.id;
   const menu = rid ? d.menus[rid]?.[0] : undefined;
   const [cat, setCat] = useState(0);
+  const ready = useHydrated();
   if (!menu) return <Wrap><T sid={s.id} path="heading" value={p.heading} as="h2" className="display block text-4xl" /><p className="mt-4 t-muted">The menu appears here once it is set up.</p></Wrap>;
   const c = menu.categories[cat];
   return (
     <Wrap tone="muted">
       <T sid={s.id} path="heading" value={p.heading} as="h2" className="display mb-8 block text-[clamp(2rem,4vw,3.2rem)]" />
       <nav className="mb-8 flex gap-6 overflow-x-auto border-b t-line text-sm">
-        {menu.categories.map((x, i) => <button key={x.id} onClick={() => setCat(i)} className="-mb-px whitespace-nowrap border-b-2 pb-3" style={{ borderColor: i === cat ? 'var(--t-ink)' : 'transparent', opacity: i === cat ? 1 : 0.6 }}>{x.name}</button>)}
+        {menu.categories.map((x, i) => <button key={x.id} disabled={!ready} onClick={() => setCat(i)} className="-mb-px whitespace-nowrap border-b-2 pb-3" style={{ borderColor: i === cat ? 'var(--t-ink)' : 'transparent', opacity: i === cat ? 1 : 0.6 }}>{x.name}</button>)}
       </nav>
       <ul className="grid gap-x-16 md:grid-cols-2">
         {c?.items.map((i) => (

@@ -3,6 +3,7 @@ import { expect, type Browser, type Page } from '@playwright/test';
 export const SITE = 'http://seabreeze.localhost:3000';
 export const CITY = 'http://printworks.localhost:3000';
 export const ADMIN = 'http://localhost:3000';
+export const PLATFORM = 'http://localhost:3001';
 export const OWNER = { email: 'owner@seabreeze.example', password: 'Seabreeze!2026' };
 
 export function isoDay(offset: number) {
@@ -25,6 +26,7 @@ export async function staffPage(browser: Browser) {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   await page.goto(`${ADMIN}/admin/login`, { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: 'Sign in' })).toBeEnabled();
   await page.getByLabel('Email').fill(OWNER.email);
   await page.getByLabel('Password').fill(OWNER.password);
   await page.getByRole('button', { name: 'Sign in' }).click();

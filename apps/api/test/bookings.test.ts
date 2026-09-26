@@ -86,7 +86,7 @@ describe('booking engine', () => {
     expect(ci.statusCode).toBe(200);
     const co = await app.inject({ method: 'POST', url: `/api/v1/admin/bookings/${created.id}/check-out`, headers: t.auth, payload: {} });
     expect(co.statusCode).toBe(200);
-    expect(co.json().data.invoice.number).toMatch(/^INV-\d{4}-00001$/);
+    expect(co.json().data.invoice.number).toMatch(/^INV\/\d{4}-\d{2}\/00001$/);
   });
 });
 

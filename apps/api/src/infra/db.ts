@@ -54,3 +54,18 @@ export function asSystem<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
     return fn(tx);
   });
 }
+
+class Rollback<T> extends Error { constructor(public value: T) { super('rollback'); } }
+/** Run tenant-scoped work and always roll it back — for exact "what would happen" quotes. */
+export async function dryRun<T>(tenantId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  try {
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`select set_config('app.tenant_id', ${tenantId}, true)`);
+      throw new Rollback(await fn(tx));
+    });
+  } catch (e) {
+    if (e instanceof Rollback) return e.value as T;
+    throw e;
+  }
+  throw new Error('unreachable');
+}

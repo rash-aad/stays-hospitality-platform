@@ -18,6 +18,8 @@ export const guests = pgTable(
     tags: text('tags').array().notNull().default(sql`'{}'::text[]`),
     marketingOptIn: boolean('marketing_opt_in').notNull().default(false),
     notificationPrefs: jsonb('notification_prefs').$type<Record<string, boolean>>().notNull().default({}),
+    /** Set when personal data was erased on request (DPDP); financial records keep the pseudonymised row. */
+    anonymizedAt: ts('anonymized_at'),
     createdAt: createdAt(),
   },
   (t) => [

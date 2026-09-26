@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { guestApi, onAuthChange, refreshSession, setAccessToken, signOut } from '@/lib/api';
-import { useGuest } from '@/lib/hooks';
+import { useGuest, useHydrated } from '@/lib/hooks';
 import { InstallPwa, useServiceWorker } from '../pwa';
 
 export type Home = {
@@ -83,6 +83,7 @@ function Frame({ name, children }: { name: string; children: ReactNode }) {
 
 function SignIn({ onIn }: { onIn: () => void }) {
   const [mode, setMode] = useState<'link' | 'password' | 'register'>('link');
+  const ready = useHydrated();
   const [f, setF] = useState({ email: '', reference: '', password: '', firstName: '', lastName: '' });
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -113,7 +114,7 @@ function SignIn({ onIn }: { onIn: () => void }) {
       {mode !== 'link' && <label className="block"><span className="t-label">Password</span><input className="t-input" type="password" autoComplete={mode === 'register' ? 'new-password' : 'current-password'} required minLength={mode === 'register' ? 10 : 1} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></label>}
       {err && <p role="alert" className="text-sm text-red-800">{err}</p>}
       {msg && <p className="t-surface p-4 text-sm">{msg}</p>}
-      <button className="t-btn w-full" disabled={busy}>{busy ? 'Please wait…' : mode === 'link' ? 'Email me a link' : mode === 'password' ? 'Sign in' : 'Create account'}</button>
+      <button className="t-btn w-full" disabled={busy || !ready}>{busy ? 'Please wait…' : mode === 'link' ? 'Email me a link' : mode === 'password' ? 'Sign in' : 'Create account'}</button>
     </form>
   );
 }
@@ -126,7 +127,7 @@ export function RedeemAccess() {
     const token = sp.get('token');
     if (!token) return setErr('This link is incomplete.');
     fetch('/api/v1/guest-auth/access-link/redeem', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })
-      .then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error?.message); setAccessToken('guest', j.accessToken); router.replace('/stay'); })
+      .then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error?.message); setAccessToken('guest', j.accessToken); const next = sp.get('next'); router.replace(next && /^\/stay(\/[\w/-]*)?$/.test(next) ? next : '/stay'); })
       .catch((e) => setErr(e.message || 'This link has expired.'));
   }, [sp, router]);
   return err ? <div><p className="display text-3xl">This link has expired</p><p className="t-muted mt-2">{err} Ask for a new one from the sign-in page.</p><a className="t-btn mt-6" href="/stay">Sign in</a></div> : <p className="t-muted">Opening your stay…</p>;

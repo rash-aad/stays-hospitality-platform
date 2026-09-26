@@ -1,6 +1,6 @@
 import {
   addOns, bookingItems, bookings, coupons, folioCharges, guests, housekeepingTasks, invoices, payments, properties,
-  ratePlans, rateSeasons, rooms, roomTypes, stays, taxes, type InvoiceLine, type PaymentMethod,
+  ratePlans, rateSeasons, rooms, roomTypes, stays, taxes, type BillTo, type InvoiceLine, type PaymentMethod,
 } from '@hp/db';
 import { and, asc, eq, gt, inArray, isNull, lt, lte, ne, notInArray, or, sql } from 'drizzle-orm';
 import type { TenantInfo } from '../../http/context.js';
@@ -10,6 +10,8 @@ import { formatDate, todayIn, zonedTime } from '../../lib/dates.js';
 import { reference } from '../../lib/ids.js';
 import { formatMoney } from '../../lib/money.js';
 import { siteUrl } from '../../lib/site-url.js';
+import { getBilling, supplierSnapshot } from '../billing/service.js';
+import { financialYear } from '../billing/gst.js';
 import { payToken } from './pay-token.js';
 import { issueAccessLink } from '../guests/access.js';
 import { notify } from '../notifications/notify.js';
@@ -388,34 +390,58 @@ export async function markNoShow(tx: Tx, tenant: TenantInfo, bookingId: string) 
   return u!;
 }
 
-/** Build (or refresh) the folio invoice: room + add-ons + everything charged to the room. */
+/**
+ * Build (or refresh) the folio invoice: room + add-ons + everything charged to the room.
+ * Each line carries its SAC code and GST rate. Issuing freezes supplier and buyer details and
+ * assigns a gap-free number per financial year (PREFIX/2026-27/00001), as Indian tax invoices require.
+ */
 export async function generateInvoice(tx: Tx, tenant: TenantInfo, bookingId: string, issue = false) {
   const [b] = await tx.select().from(bookings).where(and(eq(bookings.id, bookingId), eq(bookings.tenantId, tenant.id)));
   if (!b) throw notFound('Booking');
+  const billing = await getBilling(tx, tenant.id);
   const items = await tx.select().from(bookingItems).where(eq(bookingItems.bookingId, b.id));
   const charges = await tx.select().from(folioCharges).where(and(eq(folioCharges.bookingId, b.id), isNull(folioCharges.voidedAt)));
+  const rate = (amount: number, tax: number) => (amount > 0 ? Math.round((tax / amount) * 10_000) : 0);
   const lines: InvoiceLine[] = [
-    ...items.map((i) => ({ description: i.description, quantity: i.quantity, amount: i.amount, taxAmount: i.taxAmount, source: i.kind })),
-    ...charges.map((c) => ({ description: c.description, date: c.createdAt.toISOString().slice(0, 10), quantity: 1, amount: c.amount, taxAmount: c.taxAmount, source: c.sourceType })),
+    ...items.map((i) => ({ description: i.description, quantity: i.quantity, amount: i.amount, taxAmount: i.taxAmount, source: i.kind, sac: i.kind === 'room' ? billing.sacRoom : billing.sacService, rateBps: rate(i.amount, i.taxAmount) })),
+    ...charges.map((c) => ({
+      description: c.description, date: c.createdAt.toISOString().slice(0, 10), quantity: 1, amount: c.amount, taxAmount: c.taxAmount, source: c.sourceType,
+      sac: c.sourceType === 'order' ? billing.sacFood : billing.sacService, rateBps: rate(c.amount, c.taxAmount),
+    })),
   ];
   const subtotal = lines.reduce((s, l) => s + l.amount, 0);
   const taxTotal = lines.reduce((s, l) => s + l.taxAmount, 0);
   const total = subtotal + taxTotal;
   const paidRows = await tx.select().from(payments).where(and(eq(payments.bookingId, b.id), inArray(payments.status, ['captured', 'partially_refunded', 'refunded'])));
   const amountPaid = paidRows.reduce((s, p) => s + p.amount - p.refundedAmount, 0);
+  const [guest] = await tx.select().from(guests).where(eq(guests.id, b.guestId));
+  const billTo: BillTo = { name: `${guest!.firstName} ${guest!.lastName}`.trim(), email: guest!.email, ...((b.billTo as Partial<BillTo> | null) ?? {}) };
   const [existing] = await tx.select().from(invoices).where(and(eq(invoices.bookingId, b.id), ne(invoices.status, 'void')));
-  const status = issue ? (amountPaid >= total ? 'paid' : 'issued') : (existing?.status ?? 'draft');
-  if (existing) {
-    const [u] = await tx.update(invoices).set({ lines, subtotal, taxTotal, total, amountPaid, status, issuedAt: issue && !existing.issuedAt ? new Date() : existing.issuedAt }).where(eq(invoices.id, existing.id)).returning();
+  if (existing?.issuedAt) {
+    // Issued invoices are immutable apart from settlement status.
+    const [u] = await tx.update(invoices).set({ amountPaid, status: amountPaid >= existing.total ? 'paid' : 'issued' }).where(eq(invoices.id, existing.id)).returning();
     return u!;
   }
-  // Sequential numbering per tenant (tax invoices must be gap-free); serialised by an advisory lock.
-  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${tenant.id} || ':invoice'))`);
-  const [{ n }] = (await tx.execute(sql`select count(*)::int + 1 as n from invoices where tenant_id = ${tenant.id}`)) as unknown as [{ n: number }];
-  const number = `INV-${new Date().getFullYear()}-${String(n).padStart(5, '0')}`;
-  const [inv] = await tx.insert(invoices).values({
-    tenantId: tenant.id, guestId: b.guestId, bookingId: b.id, number, status, lines, currency: b.currency, subtotal, taxTotal, total, amountPaid, issuedAt: issue ? new Date() : null,
-  }).returning();
+  const status = issue ? (amountPaid >= total ? 'paid' : 'issued') : 'draft';
+  const frozen = issue ? { supplier: await supplierSnapshot(tx, tenant.id), billTo, issuedAt: new Date() } : { billTo };
+  let number = existing?.number;
+  if (!number || (issue && number.startsWith('DRAFT-'))) {
+    if (issue) {
+      // Gap-free per tenant and financial year, serialised by an advisory lock.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${tenant.id} || ':invoice'))`);
+      const fy = financialYear(new Date(), tenant.timezone);
+      const prefix = `${billing.invoicePrefix}/${fy}/`;
+      const [{ n }] = (await tx.execute(sql`select count(*)::int + 1 as n from invoices where tenant_id = ${tenant.id} and number like ${`${prefix}%`}`)) as unknown as [{ n: number }];
+      number = `${prefix}${String(n).padStart(5, '0')}`;
+    } else {
+      number = `DRAFT-${b.reference}`;
+    }
+  }
+  if (existing) {
+    const [u] = await tx.update(invoices).set({ number, lines, subtotal, taxTotal, total, amountPaid, status, ...frozen }).where(eq(invoices.id, existing.id)).returning();
+    return u!;
+  }
+  const [inv] = await tx.insert(invoices).values({ tenantId: tenant.id, guestId: b.guestId, bookingId: b.id, number, status, lines, currency: b.currency, subtotal, taxTotal, total, amountPaid, ...frozen }).returning();
   return inv!;
 }
 

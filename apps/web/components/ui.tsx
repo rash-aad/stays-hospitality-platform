@@ -62,7 +62,7 @@ export function Field({ label, hint, error, children, className }: { label: stri
 const TONE: Record<string, string> = {
   confirmed: 'ok', checked_in: 'accent', checked_out: 'neutral', pending_payment: 'warn', cancelled: 'neutral', expired: 'neutral', no_show: 'bad',
   paid: 'ok', captured: 'ok', partially_paid: 'warn', unpaid: 'neutral', awaiting_payment: 'warn', pending_verification: 'warn', rejected: 'bad', refunded: 'neutral', partially_refunded: 'neutral', charged_to_room: 'accent', failed: 'bad',
-  new: 'warn', accepted: 'accent', preparing: 'accent', ready: 'ok', delivered: 'neutral', completed: 'neutral',
+  held: 'ok', conflict: 'bad', new: 'warn', accepted: 'accent', preparing: 'accent', ready: 'ok', delivered: 'neutral', completed: 'neutral',
   open: 'warn', acknowledged: 'accent', in_progress: 'accent', resolved: 'ok', closed: 'neutral', assigned: 'accent', on_hold: 'neutral',
   waitlisted: 'warn', requested: 'warn', seated: 'accent',
   clean: 'ok', dirty: 'warn', inspected: 'accent', out_of_service: 'bad', pending: 'neutral', done: 'ok', failed_inspection: 'bad', skipped: 'neutral',

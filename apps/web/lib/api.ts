@@ -1,5 +1,7 @@
 'use client';
 
+import { onPlatformSurface } from './surface';
+
 export type Audience = 'staff' | 'guest';
 
 export class ApiError extends Error {
@@ -23,18 +25,26 @@ export function setAccessToken(aud: Audience, token: string | null) {
   listeners.forEach((l) => l(aud, !!token));
 }
 
+/** Which refresh cookie a session uses: platform consoles keep their own, separate from hotel staff. */
+const cookieAud = (aud: Audience) => (aud === 'staff' && onPlatformSurface() ? 'platform' : aud);
+
 export function refreshSession(aud: Audience): Promise<boolean> {
   inflight[aud] ??= (async () => {
     try {
-      const r = await fetch(`/api/v1/auth/refresh?aud=${aud}`, { method: 'POST', headers: { 'x-csrf': '1' }, credentials: 'same-origin' });
-      if (!r.ok) {
-        setAccessToken(aud, null);
-        return false;
+      // Only a definite "no session" signs you out; rate limits, server hiccups and flaky Wi-Fi are retried.
+      for (let attempt = 0; ; attempt++) {
+        const r = await fetch(`/api/v1/auth/refresh?aud=${cookieAud(aud)}`, { method: 'POST', headers: { 'x-csrf': '1' }, credentials: 'same-origin' }).catch(() => null);
+        if (r?.ok) {
+          setAccessToken(aud, (await r.json()).accessToken);
+          return true;
+        }
+        if ((r && r.status < 500 && r.status !== 429) || attempt >= 3) {
+          if (r && r.status < 500 && r.status !== 429) setAccessToken(aud, null);
+          return false;
+        }
+        const wait = Number(r?.headers.get('retry-after')) || 0.5 * 2 ** attempt;
+        await new Promise((res) => setTimeout(res, Math.min(wait, 5) * 1000));
       }
-      setAccessToken(aud, (await r.json()).accessToken);
-      return true;
-    } catch {
-      return false;
     } finally {
       setTimeout(() => (inflight[aud] = null), 0);
     }
@@ -43,7 +53,7 @@ export function refreshSession(aud: Audience): Promise<boolean> {
 }
 
 export async function signOut(aud: Audience) {
-  await fetch(`/api/v1/auth/logout?aud=${aud}`, { method: 'POST', headers: { 'x-csrf': '1' } }).catch(() => {});
+  await fetch(`/api/v1/auth/logout?aud=${cookieAud(aud)}`, { method: 'POST', headers: { 'x-csrf': '1' } }).catch(() => {});
   setAccessToken(aud, null);
 }
 

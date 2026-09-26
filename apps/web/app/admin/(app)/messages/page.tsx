@@ -16,7 +16,7 @@ export default function Messages() {
   const [text, setText] = useState('');
   const { busy, run } = useAction();
   const end = useRef<HTMLDivElement>(null);
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [thread]);
+  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [thread]);
   const current = data?.data.find((t) => t.guestId === sel);
   return (
     <>

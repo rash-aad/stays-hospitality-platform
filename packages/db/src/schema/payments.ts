@@ -85,7 +85,11 @@ export const refunds = pgTable('refunds', {
   createdAt: createdAt(),
 });
 
-export type InvoiceLine = { description: string; date?: string; quantity: number; amount: number; taxAmount: number; source?: string };
+export type InvoiceLine = { description: string; date?: string; quantity: number; amount: number; taxAmount: number; source?: string; sac?: string; rateBps?: number };
+/** Buyer details for a GST tax invoice (B2B guests can claim input credit with their GSTIN). */
+export type BillTo = { name: string; company?: string | null; gstin?: string | null; address?: string | null; stateCode?: string | null; email?: string | null };
+/** Supplier details frozen onto the invoice when it is issued (issued invoices never change). */
+export type Supplier = { legalName: string; tradeName: string; gstin: string | null; address: string; stateCode: string | null; stateName: string | null; phone: string | null; email: string | null };
 
 export const invoices = pgTable(
   'invoices',
@@ -102,6 +106,8 @@ export const invoices = pgTable(
     taxTotal: integer('tax_total').notNull(),
     total: integer('total').notNull(),
     amountPaid: integer('amount_paid').notNull().default(0),
+    billTo: jsonb('bill_to').$type<BillTo | null>(),
+    supplier: jsonb('supplier').$type<Supplier | null>(),
     issuedAt: ts('issued_at'),
     createdAt: createdAt(),
   },

@@ -5,6 +5,16 @@
 	}
 }
 
+# Super Admin console on its own hostname (regular certificate, not on-demand).
+{$CONSOLE_HOST} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Frame-Options "DENY"
+	}
+	reverse_proxy web:3000
+}
+
 https:// {
 	tls {
 		on_demand

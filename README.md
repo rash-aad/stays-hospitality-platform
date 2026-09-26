@@ -27,6 +27,11 @@ Multi-tenant platform for hotels, resorts and villas: a tenant CRM and operation
 - **Restaurant**: table allocation with an exclusion constraint against overlaps, waitlist, menus with variants/add-ons/allergens, kitchen queue
 - **Guest services**: configurable request types with workflows and SLAs routed to housekeeping and maintenance
 - **Website builder**: structured JSON pages (no raw HTML), autosave with revision checks, publish, version history, rollback, custom domains verified by DNS TXT
+- **GST tax invoices**: GSTIN checksum validation, SAC codes, CGST/SGST split, financial-year numbering, company bill-to; issued invoices are frozen
+- **Guest journey automation**: pre-arrival email with online check-in, experience and table reminders, waitlist promotion notices, post-stay feedback with NPS and staff replies
+- **Self-service**: guests change dates (priced first, then committed) and complete online check-in (only the last 4 ID characters stored)
+- **Channel sync**: iCal export of sold-out nights and SSRF-safe import of OTA calendars that holds inventory and flags clashes
+- **Privacy (DPDP Act)**: guest data export and erasure, with financial records kept pseudonymised
 
 ## Run locally
 ```bash
@@ -36,6 +41,7 @@ npm install
 npm run db:reset                # migrate + seed two demo properties
 npm run dev:api                 # http://localhost:4000  (docs at /docs)
 npm run dev:web                 # http://localhost:3000
+npm run dev:platform            # Super Admin console on http://localhost:3001
 ```
 Demo sites: http://seabreeze.localhost:3000 (resort with dining) and http://printworks.localhost:3000 (city hotel, no restaurant).
 Demo logins are listed at the top of `apps/api/src/seed.ts`. Emails are captured by Mailpit at http://localhost:8025.

@@ -44,6 +44,20 @@ describe('authentication', () => {
     expect((await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', headers: { 'x-csrf': '1' }, cookies: { hp_rt_staff: lost } })).statusCode).toBe(401);
   });
 
+  it('keeps platform sessions in their own refresh cookie', async () => {
+    const pa = await platformAdmin();
+    const login = await app.inject({ method: 'POST', url: '/api/v1/auth/staff/login', payload: { email: pa.user.email, password: 'Password12345' } });
+    expect(login.json().kind).toBe('platform');
+    const cookie = login.cookies.find((c) => c.name === 'hp_rt_platform')!;
+    expect(cookie).toBeTruthy();
+    expect(login.cookies.find((c) => c.name === 'hp_rt_staff')).toBeUndefined();
+    // A hotel sign-in in the same browser can't stand in for (or replace) the platform session.
+    expect((await app.inject({ method: 'POST', url: '/api/v1/auth/refresh?aud=staff', headers: { 'x-csrf': '1' }, cookies: { hp_rt_platform: cookie.value } })).statusCode).toBe(401);
+    const r = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh?aud=platform', headers: { 'x-csrf': '1' }, cookies: { hp_rt_platform: cookie.value } });
+    expect(r.statusCode).toBe(200);
+    expect(r.cookies.find((c) => c.name === 'hp_rt_platform')).toBeTruthy();
+  });
+
   it('rejects bad passwords and locks after repeated failures', async () => {
     const t = await createTenant();
     for (let i = 0; i < 5; i++) {

@@ -19,7 +19,7 @@ Tenants add a domain in **Website → Domains** and create a TXT record `_stays-
 
 ## Backups and recovery
 
-- Nightly logical backups: `pg_dump --format=custom --no-owner "$DATABASE_URL" > stays-$(date +%F).dump`; keep 30 days, copy off-site.
+- Nightly backups: `scripts/backup.sh` (cron it) writes a verified `pg_dump` custom-format dump plus an uploads tarball to `BACKUP_DIR` and prunes after `KEEP_DAYS` (30). Copy `BACKUP_DIR` off-site afterwards.
 - Point-in-time recovery: enable WAL archiving (or use your managed provider's PITR).
 - Restore drill (monthly): `createdb stays_restore && pg_restore --no-owner -d stays_restore stays-YYYY-MM-DD.dump`, then run `npm run db:migrate` against it and smoke-test.
 - Uploaded files live in the `uploads` volume (`UPLOAD_DIR`) — back it up with the database.
@@ -38,5 +38,26 @@ Tenants add a domain in **Website → Domains** and create a TXT record `_stays-
 | `notify` | on demand + sweep | Drain the notification outbox (email, SMS/WhatsApp adapters, web push) |
 | `expire-holds` | every minute | Release unpaid booking holds; expire stale order/experience payments |
 | `sla-sweep` | every minute | Escalate requests past their target time |
-| `reconcile-gateway` | every 5 minutes | Gateway status reconciliation hook |
+| `reconcile-gateway` | every 5 minutes | Ask the gateway about payments whose webhook never arrived |
+| `reminders` | every 10 minutes | Pre-arrival (with online check-in link), experience and table reminders, post-stay feedback requests — each sent once |
+| `ical-sync` | every 30 minutes | Import OTA calendars (Airbnb, Booking.com…) and hold or release rooms; clashes are flagged, never oversold |
 | `generate-housekeeping` | 00:30 daily | Create stayover cleaning tasks for occupied rooms |
+
+## Channel calendars (iCal)
+
+**Settings → Channels (iCal)**. *Share our calendar* creates a secret `…/api/v1/public/ical/<token>.ics` link per room type listing sold-out or closed nights (no guest data) — paste it into each OTA. *Import a channel* takes the OTA's https calendar link; imported reservations hold one room per night like a booking. Imports only fetch public https addresses (private/internal IPs are refused at connect time, redirects are not followed, 2 MB / 10 s caps).
+
+## Guest data (DPDP Act)
+
+Guests can download their data or erase it from the portal (**More → Your data**); staff can erase from a guest's profile. Erasure is refused while a stay is upcoming or in progress, removes names, contacts, messages and preferences, and keeps pseudonymised financial records (bookings, invoices) as tax law requires. Online check-in stores only the last four characters of an ID number.
+
+## CI
+
+`.github/workflows/ci.yml` runs typecheck, the API/contract test suites against Postgres and Redis service containers, and production builds of both apps on every push and pull request.
+
+## Super Admin console on its own origin
+
+The platform console (`/platform`) is served only on `PLATFORM_HOST`; every other host answers 404 for it, and the console origin exposes nothing but the console and its `/api/v1/auth` + `/api/v1/platform` endpoints. Platform sessions use their own refresh cookie, so a hotel login in the same browser never replaces them.
+
+- **Development:** `npm run dev:platform` serves it on http://localhost:3001 (`apps/web/.env.local`: `PLATFORM_HOST=localhost:3001`, `NEXT_PUBLIC_PLATFORM_URL=http://localhost:3001`).
+- **Production:** set `CONSOLE_HOST=console.example.com` for `deploy/docker-compose.prod.yml`; Caddy gives it its own certificate. Consider restricting it further by IP allow-list in the Caddyfile.

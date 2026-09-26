@@ -29,7 +29,7 @@ export default function Bill() {
             <div className="flex justify-between text-sm t-muted"><dt>Paid</dt><dd className="tabular-nums">{inr(current.amountPaid)}</dd></div>
             <div className="flex justify-between font-medium"><dt>Balance</dt><dd className="tabular-nums">{inr(Math.max(0, current.total - current.amountPaid))}</dd></div>
           </dl>
-          <button className="t-btn t-btn-outline mt-6 w-full" onClick={() => window.print()}>Print or save as PDF</button>
+          <a className="t-btn t-btn-outline mt-6 w-full" href={`/stay/invoice/${current.id}`} data-testid="open-invoice">{current.status === 'draft' ? 'Invoice preview & company details' : 'View GST invoice'}</a>
         </section>
       )}
       {data.payments.length > 0 && (

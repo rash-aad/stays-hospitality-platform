@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hp
+          POSTGRES_PASSWORD: hp_dev_password
+          POSTGRES_DB: hp
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hp" --health-interval 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Environment (development defaults only — no real secrets)
+        run: |
+          cp .env.example .env
+          ln -sf ../../.env packages/db/.env
+      - name: Database role, test database and migrations
+        run: npm run db:migrate
+      - run: npm run typecheck
+      - name: Unit and API tests (includes tenant isolation, concurrency and payment tests)
+        run: npm test
+      - name: Build API
+        run: npm run build --workspace=@hp/api
+      - name: Build web
+        run: npm run build --workspace=@hp/web
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

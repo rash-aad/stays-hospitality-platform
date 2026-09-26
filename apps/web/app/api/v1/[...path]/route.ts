@@ -8,8 +8,15 @@ const API = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 const PASS_REQ = ['authorization', 'content-type', 'idempotency-key', 'x-csrf', 'cookie', 'user-agent', 'accept', 'x-request-id'];
 const PASS_RES = ['content-type', 'content-disposition', 'cache-control', 'x-request-id', 'idempotent-replayed'];
 
+const PLATFORM_HOST = process.env.PLATFORM_HOST?.trim().toLowerCase() || null;
+
 async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
+  if (PLATFORM_HOST) {
+    // Platform APIs are reachable only through the console origin, which in turn exposes nothing else.
+    const onPlatform = (req.headers.get('host') ?? '').toLowerCase() === PLATFORM_HOST;
+    if (onPlatform ? !['auth', 'platform'].includes(path[0]!) : path[0] === 'platform') return Response.json({ error: { code: 'not_found', message: 'Not found' } }, { status: 404 });
+  }
   const url = new URL(`${API}/api/v1/${path.map(encodeURIComponent).join('/')}`);
   url.search = req.nextUrl.search;
   const headers = new Headers();

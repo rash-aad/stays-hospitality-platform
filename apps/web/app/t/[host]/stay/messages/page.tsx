@@ -9,7 +9,7 @@ export default function Messages() {
   const { data, mutate } = useGuest<{ data: { id: string; body: string; senderType: 'guest' | 'staff'; createdAt: string }[] }>('/portal/messages', { refreshInterval: 10_000 });
   const [text, setText] = useState('');
   const end = useRef<HTMLDivElement>(null);
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [data]);
+  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [data]);
   return (
     <>
       <Title back="/stay" sub="The front desk replies here, usually within minutes.">Messages</Title>

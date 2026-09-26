@@ -20,6 +20,9 @@ import { notificationRoutes } from './domain/notifications/routes.js';
 import { reportRoutes } from './domain/reports/routes.js';
 import { integrationRoutes } from './domain/integrations/routes.js';
 import { eventRoutes } from './domain/events/routes.js';
+import { billingRoutes } from './domain/billing/routes.js';
+import { engagementRoutes } from './domain/engagement/routes.js';
+import { channelAdminRoutes, channelRoutes } from './domain/channels/routes.js';
 
 export const registerRoutes: Routes = async (app, { config }) => {
   const opts = { config };
@@ -44,4 +47,8 @@ export const registerRoutes: Routes = async (app, { config }) => {
   await app.register(reportRoutes, opts);
   await app.register(integrationRoutes, opts);
   await app.register(eventRoutes, opts);
+  await app.register(billingRoutes, opts);
+  await app.register(engagementRoutes, opts);
+  await app.register(channelRoutes, opts);
+  await app.register(channelAdminRoutes, opts);
 };

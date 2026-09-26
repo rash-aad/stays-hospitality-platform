@@ -3,9 +3,10 @@
   "private": true,
   "workspaces": ["packages/*", "apps/*"],
   "scripts": {
-    "dev": "npm run dev --workspace=@hp/api & npm run dev --workspace=@hp/web",
+    "dev": "npm run dev --workspace=@hp/api & npm run dev --workspace=@hp/web & npm run dev:platform --workspace=@hp/web",
     "dev:api": "npm run dev --workspace=@hp/api",
     "dev:web": "npm run dev --workspace=@hp/web",
+    "dev:platform": "npm run dev:platform --workspace=@hp/web",
     "db:migrate": "npm run migrate --workspace=@hp/db",
     "db:seed": "npm run seed --workspace=@hp/db",
     "db:reset": "npm run reset --workspace=@hp/db",

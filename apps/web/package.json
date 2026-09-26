@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3000",
+    "dev:platform": "node scripts/platform-port.mjs",
     "build": "next build",
     "start": "next start -p 3000",
+    "start:platform": "node scripts/platform-port.mjs",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test"
   },

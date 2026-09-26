@@ -1,4 +1,4 @@
-import { folioCharges, housekeepingTasks, maintenanceTickets, serviceRequestTypes, tenantModules } from '@hp/db';
+import { folioCharges, housekeepingTasks, maintenanceTickets, restaurantReservations, serviceRequestTypes, tenantModules } from '@hp/db';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { asSystem } from '../src/infra/db.js';
@@ -46,9 +46,10 @@ describe('restaurant reservations', () => {
     expect(wait.status).toBe('waitlisted');
     expect((await app.inject({ method: 'POST', url: `/api/v1/admin/reservations/${wait.id}/status`, headers: t.auth, payload: { status: 'confirmed' } })).statusCode).toBe(409);
     await app.inject({ method: 'POST', url: `/api/v1/admin/reservations/${first.id}/status`, headers: t.auth, payload: { status: 'cancelled' } });
-    const promoted = await app.inject({ method: 'POST', url: `/api/v1/admin/reservations/${wait.id}/status`, headers: t.auth, payload: { status: 'confirmed' } });
-    expect(promoted.statusCode).toBe(200);
-    expect(promoted.json().data.tableId).toBe(r.tables.t4.id);
+    // The freed table goes to the waitlist automatically.
+    const [promoted] = await asSystem((tx) => tx.select().from(restaurantReservations).where(eq(restaurantReservations.id, wait.id)));
+    expect(promoted!.status).toBe('confirmed');
+    expect(promoted!.tableId).toBe(r.tables.t4.id);
     const ns = await app.inject({ method: 'POST', url: `/api/v1/admin/reservations/${wait.id}/status`, headers: t.auth, payload: { status: 'no_show' } });
     expect(ns.json().data.status).toBe('no_show');
   });

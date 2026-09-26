@@ -178,7 +178,27 @@ export async function transitionReservation(tx: Tx, tenant: TenantInfo, id: stri
   const [updated] = await tx.update(restaurantReservations).set({ status: to, tableId }).where(eq(restaurantReservations.id, res.id)).returning();
   if (to === 'confirmed' && res.status === 'waitlisted') await notifyReservation(tx, tenant, r!, updated!, 'restaurant.reservation_confirmed');
   if (to === 'cancelled') await notifyReservation(tx, tenant, r!, updated!, 'restaurant.reservation_cancelled');
+  if ((to === 'cancelled' || to === 'no_show') && res.tableId) await promoteWaitlist(tx, tenant, r!, res.startsAt, res.endsAt);
   return updated!;
+}
+
+/**
+ * A table was freed: confirm the longest-waiting waitlisted party whose time overlaps and who now fits,
+ * and tell them. Runs under the restaurant row lock already held by the caller.
+ */
+async function promoteWaitlist(tx: Tx, tenant: TenantInfo, r: Restaurant, start: Date, end: Date) {
+  const waiting = await tx.select().from(restaurantReservations).where(and(
+    eq(restaurantReservations.restaurantId, r.id), eq(restaurantReservations.status, 'waitlisted'),
+    lt(restaurantReservations.startsAt, end), gt(restaurantReservations.endsAt, start),
+  )).orderBy(asc(restaurantReservations.createdAt));
+  for (const w of waiting) {
+    const table = await pickTable(tx, r, w.partySize, w.startsAt, w.endsAt, { areaId: w.areaPreferenceId, excludeReservationId: w.id });
+    if (!table) continue;
+    const [u] = await tx.update(restaurantReservations).set({ status: 'confirmed', tableId: table.id, waitlistNotifiedAt: new Date() }).where(eq(restaurantReservations.id, w.id)).returning();
+    await notifyReservation(tx, tenant, r, u!, 'restaurant.waitlist_promoted');
+    return u!;
+  }
+  return null;
 }
 
 /** Staff edit of time, party size or table, re-checking conflicts. */

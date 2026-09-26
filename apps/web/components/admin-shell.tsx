@@ -18,6 +18,7 @@ const NAV: { group: string; items: Item[] }[] = [
     { href: '/admin/guests', label: 'Guests', perm: 'guests.read' },
     { href: '/admin/payments', label: 'Payments', perm: 'payments.read', badge: 'payments' },
     { href: '/admin/messages', label: 'Messages', perm: 'messages.manage', badge: 'messages' },
+    { href: '/admin/feedback', label: 'Feedback', perm: 'guests.read' },
     { href: '/admin/events', label: 'Events & banquets', perm: 'events.manage', mod: 'events' },
   ] },
   { group: 'Dining', items: [
@@ -40,6 +41,8 @@ const NAV: { group: string; items: Item[] }[] = [
     { href: '/admin/settings/property', label: 'Property & rooms', perm: 'property.manage' },
     { href: '/admin/settings/rates', label: 'Rates, taxes & offers', perm: 'property.manage' },
     { href: '/admin/settings/payments', label: 'Payment methods', perm: 'payments.read' },
+    { href: '/admin/settings/billing', label: 'Billing & GST', perm: 'tenant.settings' },
+    { href: '/admin/settings/channels', label: 'Channels (iCal)', perm: 'bookings.read', mod: 'room_booking' },
     { href: '/admin/settings/modules', label: 'Modules', perm: 'tenant.settings' },
     { href: '/admin/settings/staff', label: 'Staff & roles', perm: 'staff.manage' },
     { href: '/admin/settings/requests', label: 'Request types', perm: 'requests.configure' },

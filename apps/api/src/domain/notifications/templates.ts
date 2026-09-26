@@ -42,8 +42,33 @@ export const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string; 
     body: 'Dear {{name}},\n\nWe did not receive a verified payment for {{reference}} in time, so the room has been released. You are welcome to book again.',
   },
   'booking.pre_arrival': {
-    subject: 'We look forward to welcoming you, {{name}}',
-    body: 'Your stay at {{property}} begins on {{checkIn}}. Check-in is from {{checkInTime}}. Your guest portal: {{link}}',
+    subject: 'See you tomorrow, {{name}}',
+    body: 'Your stay at {{property}} begins on {{checkIn}}. Check-in is from {{checkInTime}}.\n\nSave time at the desk — tell us your arrival time and add your ID before you travel (2 minutes):\n{{link}}\n\nFrom the same page you can book a table, arrange an airport pickup or message us.',
+    sms: '{{property}}: see you {{checkIn}}. Check in online before you arrive: {{link}}',
+  },
+  'experience.reminder': {
+    subject: 'Reminder: {{experience}} at {{time}}',
+    body: 'Dear {{name}},\n\nA reminder that {{experience}} starts at {{time}} ({{when}}) for {{participants}}. Meeting point: {{location}}.',
+  },
+  'restaurant.reservation_reminder': {
+    subject: 'Your table at {{restaurant}} tonight',
+    body: 'Dear {{name}},\n\nWe look forward to seeing you at {{restaurant}} at {{time}}, party of {{partySize}}. Need to change it? {{link}}',
+  },
+  'restaurant.waitlist_promoted': {
+    subject: 'Good news — a table opened up at {{restaurant}}',
+    body: 'Dear {{name}},\n\nA table is now confirmed for you at {{restaurant}} on {{when}} for {{partySize}}. Reference {{reference}}. If you can no longer make it, please let us know.',
+  },
+  'stay.feedback_request': {
+    subject: 'How was your stay at {{property}}?',
+    body: 'Dear {{name}},\n\nThank you for staying with us. Two minutes of feedback helps us look after the next guest even better:\n{{link}}',
+  },
+  'feedback.reply': {
+    subject: 'A reply from {{property}}',
+    body: '{{body}}',
+  },
+  'booking.dates_changed': {
+    subject: 'Your booking {{reference}} has new dates',
+    body: 'Dear {{name}},\n\nYour stay is now {{checkIn}} to {{checkOut}}. New total {{total}}.{{balanceNote}}',
   },
   'restaurant.reservation_confirmed': {
     subject: 'Table confirmed at {{restaurant}}',

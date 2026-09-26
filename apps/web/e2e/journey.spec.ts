@@ -190,6 +190,6 @@ test.describe.serial('guest journey: discover → book (UPI) → verify → stay
     await staff.getByRole('button', { name: 'Check out' }).click();
     await expect(staff.getByText('Checked out — invoice issued')).toBeVisible();
     await guest.goto(`${SITE}/stay/bill`, { waitUntil: 'domcontentloaded' });
-    await expect(guest.getByTestId('invoice')).toContainText(/Invoice INV-\d{4}-\d{5}/);
+    await expect(guest.getByTestId('invoice')).toContainText(/Invoice INV\/\d{4}-\d{2}\/\d{5}/);
   });
 });

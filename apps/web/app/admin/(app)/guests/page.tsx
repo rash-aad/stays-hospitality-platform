@@ -17,10 +17,11 @@ function GuestDrawer({ id, onClose }: { id: string | null; onClose: () => void }
   const { busy, run } = useAction();
   const [notes, setNotes] = useState<string | null>(null);
   const [tags, setTags] = useState<string | null>(null);
+  const [confirmErase, setConfirmErase] = useState<string | null>(null);
   const d = data?.data;
   return (
     <Drawer open={!!id} onClose={onClose} title={d ? `${d.guest.firstName} ${d.guest.lastName}` : 'Guest'} sub={d?.guest.email}
-      footer={can.perm('guests.write') && d && <button className="btn btn-primary" disabled={busy} onClick={() => run(() => staffApi(`/admin/guests/${id}`, { method: 'PATCH', body: { notes: notes ?? d.guest.notes, tags: (tags ?? d.guest.tags.join(', ')).split(',').map((t) => t.trim()).filter(Boolean) } }), 'Guest saved').then(() => mutate())}>Save notes</button>}>
+      footer={can.perm('guests.write') && d && <><button className="btn btn-danger mr-auto" disabled={busy} onClick={() => { if (confirmErase !== id) return setConfirmErase(id); run(() => staffApi(`/admin/guests/${id}/anonymize`, { body: {} }), 'Personal data erased').then((r) => { setConfirmErase(null); if (r) mutate(); }); }}>{confirmErase === id ? 'Click again to erase' : 'Erase personal data'}</button><button className="btn btn-primary" disabled={busy} onClick={() => run(() => staffApi(`/admin/guests/${id}`, { method: 'PATCH', body: { notes: notes ?? d.guest.notes, tags: (tags ?? d.guest.tags.join(', ')).split(',').map((t) => t.trim()).filter(Boolean) } }), 'Guest saved').then(() => mutate())}>Save notes</button></>}>
       {!d ? <Loading /> : (
         <>
           <Section title="Profile">

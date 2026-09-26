@@ -41,6 +41,12 @@ export const bookings = pgTable(
     cancellationReason: text('cancellation_reason'),
     cancellationFee: integer('cancellation_fee'),
     createdByUserId: uuid('created_by_user_id').references(() => users.id),
+    /** Online pre-check-in: arrival details and ID captured before the guest arrives. */
+    precheckin: jsonb('precheckin').$type<Precheckin | null>(),
+    precheckinAt: ts('precheckin_at'),
+    billTo: jsonb('bill_to').$type<Record<string, unknown> | null>(),
+    preArrivalSentAt: ts('pre_arrival_sent_at'),
+    feedbackRequestedAt: ts('feedback_requested_at'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -53,6 +59,11 @@ export const bookings = pgTable(
     check('bookings_guests_ck', sql`${t.adults} >= 1 and ${t.children} >= 0`),
   ],
 );
+
+export type Precheckin = {
+  arrivalTime: string | null; travellingBy: string | null; nationality: string | null; idType: string | null; idNumberLast4: string | null;
+  idFileId: string | null; address: string | null; purposeOfVisit: string | null; guestNames: string[]; specialRequests: string | null; consent: boolean;
+};
 
 export type NightlyRate = { date: string; price: number };
 
