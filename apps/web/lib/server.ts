@@ -9,6 +9,20 @@ export async function publicGet<T>(host: string, path: string, revalidate = 30):
   return (await res.json()) as T;
 }
 
+/**
+ * Is the property live right now? Never cached, so a suspended (or removed) property goes offline on
+ * every web server immediately — cached site data alone would outlive it until each cache is purged.
+ * If the API can't be reached we keep serving the cached site rather than taking every site down.
+ */
+export async function siteLive(host: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API}/api/v1/public/site-status`, { headers: { 'x-tenant-host': host }, cache: 'no-store', signal: AbortSignal.timeout(3000) });
+    return res.ok || res.status >= 500;
+  } catch {
+    return true;
+  }
+}
+
 export async function getSite(host: string) {
   return (await publicGet<{ data: SiteInfo }>(host, '/public/site'))?.data ?? null;
 }

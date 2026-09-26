@@ -222,6 +222,12 @@ export const siteRoutes: Routes = async (app, { config }) => {
   });
 
   // ================= Public site =================
+  /** Uncached liveness check the web tier makes on every page: suspension takes effect at once on every web server. */
+  app.get('/public/site-status', { preHandler: resolvePublicTenant, schema: { tags: ['website'] } }, async (_req, reply) => {
+    reply.header('cache-control', 'no-store');
+    return { live: true };
+  });
+
   app.get('/public/site', { preHandler: resolvePublicTenant, schema: { tags: ['website'] } }, async (req) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {

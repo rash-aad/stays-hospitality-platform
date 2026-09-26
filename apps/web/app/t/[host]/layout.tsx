@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { notFound } from 'next/navigation';
 import { fontHref, themeVars } from '@/components/site/theme';
-import { decodeHost, getSite } from '@/lib/server';
+import { decodeHost, getSite, siteLive } from '@/lib/server';
 
 type Props = { children: React.ReactNode; params: Promise<{ host: string }> };
 
@@ -27,8 +27,8 @@ export async function generateViewport({ params }: Props): Promise<Viewport> {
 
 export default async function TenantLayout({ children, params }: Props) {
   const host = decodeHost((await params).host);
-  const site = await getSite(host);
-  if (!site) notFound();
+  const [site, live] = await Promise.all([getSite(host), siteLive(host)]);
+  if (!site || !live) notFound();
   const tokens = site.theme?.tokens;
   const href = fontHref(tokens);
   return (

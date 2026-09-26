@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { setTxtResolver } from '../src/domain/content/domains.js';
 import { resolveHost } from '../src/domain/tenants/tenant-cache.js';
-import { addStaff, app, createTenant, useApp } from './helpers.js';
+import { addStaff, app, createTenant, platformAdmin, useApp } from './helpers.js';
 
 useApp();
 
@@ -91,6 +91,16 @@ describe('domain resolution', () => {
     // Public API scoped by host serves the right tenant.
     const site = (await app.inject({ method: 'GET', url: '/api/v1/public/site', headers: { 'x-tenant-host': host } })).json().data;
     expect(site.tenant.slug).toBe(t.slug);
+  });
+
+  it('reports whether a site is live, uncached, and 404s once the property is suspended', async () => {
+    const t = await createTenant();
+    const pa = await platformAdmin();
+    const live = await app.inject({ method: 'GET', url: '/api/v1/public/site-status', headers: t.host });
+    expect(live.statusCode).toBe(200);
+    expect(live.headers['cache-control']).toBe('no-store');
+    await app.inject({ method: 'PATCH', url: `/api/v1/platform/tenants/${t.tenant.id}`, headers: pa.auth, payload: { status: 'suspended' } });
+    expect((await app.inject({ method: 'GET', url: '/api/v1/public/site-status', headers: t.host })).statusCode).toBe(404);
   });
 
   it('serves a per-tenant PWA manifest', async () => {
