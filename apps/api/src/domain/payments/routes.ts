@@ -13,6 +13,7 @@ import { offset, pageMeta, pageQuery } from '../../lib/pagination.js';
 
 import { GATEWAYS } from './gateways/index.js';
 import { mockGateway } from './gateways/mock.js';
+import { openShiftOf } from '../operations/shifts.js';
 import { applyGatewayEvent, capture, gatewayConfigured, gatewayCreds, getSettings, refundPayment, verifyManual } from './service.js';
 
 
@@ -115,6 +116,10 @@ export const paymentRoutes: Routes = async (app, { config }) => {
     const actor = staffActor(req);
     return withTenant(t.id, async (tx) => {
       const r = await refundPayment(tx, { tenant: t, paymentId: req.params.id, amount: req.body.amount, reason: req.body.reason, note: req.body.note, userId: actor.userId });
+      // Cash handed back at the desk comes out of the refunding cashier's open drawer.
+      const [paid] = await tx.select({ tender: payments.tender }).from(payments).where(eq(payments.id, req.params.id));
+      const shift = paid?.tender === 'cash' ? await openShiftOf(tx, t.id, actor.userId) : null;
+      if (shift) await tx.update(refunds).set({ shiftId: shift.id }).where(eq(refunds.id, r.id));
       await audit(tx, req, { action: 'payment.refund', entityType: 'payment', entityId: req.params.id, changes: { amount: req.body.amount, status: r.status } });
       return { data: r };
     });
@@ -128,19 +133,21 @@ export const paymentRoutes: Routes = async (app, { config }) => {
   /** Record money taken at the desk (cash/card/UPI to the property) against a booking. */
   app.post('/admin/bookings/:id/payments', {
     preHandler: requireStaff('bookings.write'),
-    schema: { tags: ['payments'], params: z.object({ id: z.string().uuid() }), body: z.object({ amount: z.number().int().min(1), note: z.string().max(300).optional(), utr: z.string().max(40).optional() }) },
+    schema: { tags: ['payments'], params: z.object({ id: z.string().uuid() }), body: z.object({ amount: z.number().int().min(1), note: z.string().max(300).optional(), utr: z.string().max(40).optional(), tender: z.enum(['cash', 'card', 'upi', 'bank_transfer', 'other']).default('cash') }) },
   }, async (req, reply) => {
     const t = tenantOf(req);
     const actor = staffActor(req);
     const p = await withTenant(t.id, async (tx) => {
       const [b] = await tx.select().from(bookings).where(and(eq(bookings.id, req.params.id), eq(bookings.tenantId, t.id)));
       if (!b) throw notFound('Booking');
+      const shift = await openShiftOf(tx, t.id, actor.userId);
       const [p] = await tx.insert(payments).values({
+        tender: req.body.tender, shiftId: shift?.id ?? null,
         tenantId: t.id, guestId: b.guestId, targetType: 'booking', targetId: b.id, bookingId: b.id, method: 'pay_at_property', status: 'awaiting_payment',
         amount: req.body.amount, currency: b.currency, reference: reference('PAY', 8), utr: req.body.utr?.toUpperCase() || null, metadata: { note: req.body.note, recordedBy: actor.userId },
       }).returning();
       const captured = await capture(tx, p!, { verifiedByUserId: actor.userId, verifiedAt: new Date() });
-      await audit(tx, req, { action: 'payment.record', entityType: 'payment', entityId: captured.id, changes: { amount: req.body.amount, booking: b.reference } });
+      await audit(tx, req, { action: 'payment.record', entityType: 'payment', entityId: captured.id, changes: { amount: req.body.amount, tender: req.body.tender, booking: b.reference, shift: shift?.id } });
       return captured;
     });
     return reply.status(201).send({ data: p });

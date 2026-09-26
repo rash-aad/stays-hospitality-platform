@@ -117,6 +117,15 @@ export const securityRoutes: Routes = async (app) => {
     return { recoveryCodes: codes };
   });
 
+  /** Personal email preferences (e.g. the daily report). */
+  app.patch('/auth/preferences', { schema: { tags: ['auth'], body: z.object({ dailyReport: z.boolean().optional() }) } }, async (req) => {
+    const a = account(req);
+    const u = await loadUser(a.userId);
+    const prefs = { ...(u.notificationPrefs ?? {}), ...req.body };
+    await asSystem((tx) => tx.update(users).set({ notificationPrefs: prefs }).where(eq(users.id, u.id)));
+    return { data: prefs };
+  });
+
   // ---------------- Signed-in devices ----------------
   app.get('/auth/sessions', { schema: { tags: ['auth'] } }, async (req) => {
     const a = account(req);

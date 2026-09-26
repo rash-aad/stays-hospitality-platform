@@ -36,6 +36,13 @@
       "when": 1790407838804,
       "tag": "0004_security_2fa_devices",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790423220745,
+      "tag": "0005_night_audit_cash_shifts",
+      "breakpoints": true
     }
   ]
 }

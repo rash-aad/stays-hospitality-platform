@@ -4,7 +4,7 @@ import { createContext, useContext } from 'react';
 
 export type Me = {
   kind: 'staff';
-  user: { id: string; name: string; email: string; mfaEnabled: boolean; mfa: 'ok' | 'pending' | null; hasPin: boolean };
+  user: { id: string; name: string; email: string; mfaEnabled: boolean; mfa: 'ok' | 'pending' | null; hasPin: boolean; dailyReport: boolean };
   /** Name of the shared device this browser is enrolled as, if any. */
   sharedDevice: string | null;
   isOwner: boolean;

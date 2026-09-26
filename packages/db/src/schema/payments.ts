@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, date, index, integer, jsonb, pgTable, primaryKey, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { createdAt, id, tenantId, ts, updatedAt } from './_common.js';
 import { tenants, users } from './core.js';
 import { guests } from './guests.js';
@@ -59,6 +59,9 @@ export const payments = pgTable(
     submittedAt: ts('submitted_at'),
     expiresAt: ts('expires_at'),
     metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+    /** How money taken at the desk was tendered; cash counts toward the open drawer shift. */
+    tender: text('tender', { enum: ['cash', 'card', 'upi', 'bank_transfer', 'other'] }),
+    shiftId: uuid('shift_id'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -82,8 +85,65 @@ export const refunds = pgTable('refunds', {
   providerRefundId: text('provider_refund_id'),
   note: text('note'),
   createdByUserId: uuid('created_by_user_id').references(() => users.id),
+  /** Cash handed back from a drawer shift. */
+  shiftId: uuid('shift_id'),
   createdAt: createdAt(),
 });
+
+/** A cashier's drawer from opening float to count-up. */
+export const cashShifts = pgTable(
+  'cash_shifts',
+  {
+    id: id(),
+    tenantId: tenantId(),
+    propertyId: uuid('property_id').notNull(),
+    userId: uuid('user_id').notNull().references(() => users.id),
+    status: text('status', { enum: ['open', 'closed'] }).notNull().default('open'),
+    openingFloat: integer('opening_float').notNull(),
+    openedAt: createdAt(),
+    closedAt: ts('closed_at'),
+    expectedCash: integer('expected_cash'),
+    countedCash: integer('counted_cash'),
+    variance: integer('variance'),
+    notes: text('notes'),
+  },
+  (t) => [uniqueIndex('cash_shifts_one_open_uq').on(t.tenantId, t.userId).where(sql`${t.status} = 'open'`), index('cash_shifts_tenant_idx').on(t.tenantId, t.openedAt)],
+);
+
+/** Cash in or out of a drawer that isn't a guest payment (petty cash, a safe drop, change top-up). */
+export const cashMovements = pgTable('cash_movements', {
+  id: id(),
+  tenantId: tenantId(),
+  shiftId: uuid('shift_id').notNull().references(() => cashShifts.id, { onDelete: 'cascade' }),
+  kind: text('kind', { enum: ['paid_out', 'paid_in', 'drop'] }).notNull(),
+  amount: integer('amount').notNull(),
+  reason: text('reason').notNull(),
+  createdByUserId: uuid('created_by_user_id').references(() => users.id),
+  createdAt: createdAt(),
+});
+
+/** A closed business day (night audit) with the day's figures frozen. */
+export const businessDays = pgTable(
+  'business_days',
+  {
+    id: id(),
+    tenantId: tenantId(),
+    propertyId: uuid('property_id').notNull(),
+    date: date('date').notNull(),
+    closedAt: createdAt(),
+    closedByUserId: uuid('closed_by_user_id').references(() => users.id),
+    summary: jsonb('summary').$type<Record<string, unknown>>().notNull(),
+    notes: text('notes'),
+  },
+  (t) => [uniqueIndex('business_days_uq').on(t.tenantId, t.propertyId, t.date)],
+);
+
+/** Idempotency for scheduled reports (one daily report per tenant per date). */
+export const reportRuns = pgTable(
+  'report_runs',
+  { tenantId: tenantId(), kind: text('kind').notNull(), date: date('date').notNull(), createdAt: createdAt() },
+  (t) => [primaryKey({ columns: [t.tenantId, t.kind, t.date] })],
+);
 
 export type InvoiceLine = { description: string; date?: string; quantity: number; amount: number; taxAmount: number; source?: string; sac?: string; rateBps?: number };
 /** Buyer details for a GST tax invoice (B2B guests can claim input credit with their GSTIN). */

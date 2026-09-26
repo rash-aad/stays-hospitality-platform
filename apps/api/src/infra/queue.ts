@@ -9,6 +9,7 @@ export type JobName =
   | 'sla-sweep'
   | 'generate-housekeeping'
   | 'reminders'
+  | 'daily-report'
   | 'ical-sync';
 
 let queue: Queue | null = null;
@@ -32,6 +33,7 @@ export async function scheduleRepeating() {
   await queue.upsertJobScheduler('reconcile-gateway', { every: 5 * 60_000 }, { name: 'reconcile-gateway', data: {} });
   await queue.upsertJobScheduler('reminders', { every: 10 * 60_000 }, { name: 'reminders', data: {} });
   await queue.upsertJobScheduler('ical-sync', { every: 30 * 60_000 }, { name: 'ical-sync', data: {} });
+  await queue.upsertJobScheduler('daily-report', { every: 60 * 60_000 }, { name: 'daily-report', data: {} });
   await queue.upsertJobScheduler('generate-housekeeping', { pattern: '0 30 0 * * *' }, { name: 'generate-housekeeping', data: {} });
 }
 

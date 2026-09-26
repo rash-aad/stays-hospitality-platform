@@ -26,6 +26,8 @@ export const PERMISSIONS = {
   'reports.read': 'View reports',
   'integrations.manage': 'Manage integrations',
   'events.manage': 'Manage event and banquet enquiries',
+  'frontoffice.audit': 'Run the night audit and close the business day',
+  'cash.handle': 'Open and close a cash drawer shift',
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -43,11 +45,12 @@ export const SYSTEM_ROLES: Record<string, { name: string; permissions: Permissio
     permissions: [
       'bookings.read', 'bookings.write', 'guests.read', 'guests.write', 'payments.read',
       'payments.verify', 'requests.manage', 'messages.manage', 'restaurant.reservations',
+      'frontoffice.audit', 'cash.handle',
     ],
   },
   restaurant_manager: {
     name: 'Restaurant Manager',
-    permissions: ['restaurant.manage', 'restaurant.reservations', 'orders.manage', 'guests.read', 'reports.read'],
+    permissions: ['restaurant.manage', 'restaurant.reservations', 'orders.manage', 'guests.read', 'reports.read', 'cash.handle'],
   },
   kitchen: { name: 'Kitchen', permissions: ['orders.manage'] },
   housekeeping: { name: 'Housekeeping', permissions: ['housekeeping.manage', 'requests.manage'] },

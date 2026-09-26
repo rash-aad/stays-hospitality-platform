@@ -25,6 +25,7 @@ import { engagementRoutes } from './domain/engagement/routes.js';
 import { channelAdminRoutes, channelRoutes } from './domain/channels/routes.js';
 import { securityRoutes } from './domain/auth/security-routes.js';
 import { deviceRoutes } from './domain/auth/device-routes.js';
+import { operationsRoutes } from './domain/operations/routes.js';
 
 export const registerRoutes: Routes = async (app, { config }) => {
   const opts = { config };
@@ -55,4 +56,5 @@ export const registerRoutes: Routes = async (app, { config }) => {
   await app.register(channelAdminRoutes, opts);
   await app.register(securityRoutes, opts);
   await app.register(deviceRoutes, opts);
+  await app.register(operationsRoutes, opts);
 };

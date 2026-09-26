@@ -1,14 +1,29 @@
 import { MODULE_KEYS, PERMISSIONS, SYSTEM_ROLES, type ModuleKey } from '@hp/contracts';
 import { domains, paymentSettings, permissions, rolePermissions, roles, siteSettings, tenantModules, tenants, themes, users } from '@hp/db';
+import { and, eq } from 'drizzle-orm';
 import { randomToken } from '../../lib/ids.js';
 import type { Tx } from '../../infra/db.js';
 
-/** Ensure the global permission catalog matches the code. */
+/**
+ * Ensure the global permission catalog matches the code. Permissions that are new to this database
+ * are also granted to existing tenants' system roles that include them by default — only new keys,
+ * so a permission an owner deliberately removed from a role is never re-added.
+ */
 export async function syncPermissions(tx: Tx) {
+  const known = new Set((await tx.select({ key: permissions.key }).from(permissions)).map((r) => r.key));
+  const added = Object.keys(PERMISSIONS).filter((k) => !known.has(k));
   await tx
     .insert(permissions)
     .values(Object.entries(PERMISSIONS).map(([key, description]) => ({ key, description })))
     .onConflictDoNothing();
+  if (!known.size || !added.length) return added;
+  for (const [roleKey, def] of Object.entries(SYSTEM_ROLES)) {
+    const grant = def.permissions === '*' ? added : added.filter((k) => (def.permissions as string[]).includes(k));
+    if (!grant.length) continue;
+    const rs = await tx.select({ id: roles.id, tenantId: roles.tenantId }).from(roles).where(and(eq(roles.key, roleKey), eq(roles.isSystem, true)));
+    for (const r of rs) await tx.insert(rolePermissions).values(grant.map((p) => ({ tenantId: r.tenantId, roleId: r.id, permissionKey: p }))).onConflictDoNothing();
+  }
+  return added;
 }
 
 export async function createSystemRoles(tx: Tx, tenantId: string) {

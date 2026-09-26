@@ -1,5 +1,9 @@
 /** Built-in templates. Tenants override per key/channel in notification_templates. `{{var}}` is escaped on render. */
 export const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string; sms?: string }> = {
+  'report.daily': {
+    subject: '{{property}} — daily report for {{date}}',
+    body: 'Daily report for {{date}}\n\n{{body}}\n\nFull figures: Reports → Night audit.',
+  },
   'auth.password_reset': {
     subject: 'Reset your password',
     body: 'Hello {{name}},\n\nUse the link below to choose a new password. It expires in 1 hour.\n\n{{link}}\n\nIf you did not ask for this, you can ignore this email.',

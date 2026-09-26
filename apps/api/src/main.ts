@@ -1,7 +1,8 @@
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 import { initTokens } from './domain/auth/tokens.js';
-import { closeDb, initDb } from './infra/db.js';
+import { asSystem, closeDb, initDb } from './infra/db.js';
+import { syncPermissions } from './domain/tenants/provision.js';
 import { closeQueue, initQueue, scheduleRepeating } from './infra/queue.js';
 import { closeRedis, initRedis } from './infra/redis.js';
 import { startJobs } from './jobs.js';
@@ -12,6 +13,8 @@ const r = initRedis(config.REDIS_URL);
 initQueue(r);
 initTokens(config.JWT_SECRET);
 
+// New permissions in this release reach existing tenants' system roles.
+await asSystem((tx) => syncPermissions(tx));
 const app = await buildApp(config);
 const worker = config.INLINE_WORKER === '1' ? await startJobs(config) : null;
 await scheduleRepeating();

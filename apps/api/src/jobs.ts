@@ -9,6 +9,7 @@ import { expireStalePayments } from './domain/payments/expiry.js';
 import { reconcileGatewayPayments } from './domain/payments/reconcile.js';
 import { sendReminders } from './domain/engagement/reminders.js';
 import { syncAllFeeds } from './domain/channels/routes.js';
+import { sendDueDailyReports } from './domain/operations/report.js';
 import { properties, tenantModules, tenants } from '@hp/db';
 import { and, eq } from 'drizzle-orm';
 import { todayIn } from './lib/dates.js';
@@ -27,6 +28,7 @@ export async function startJobs(config: Config) {
     'reconcile-gateway': () => reconcileGatewayPayments(),
     reminders: () => sendReminders(),
     'ical-sync': () => syncAllFeeds(),
+    'daily-report': () => sendDueDailyReports(),
     'generate-housekeeping': () =>
       asSystem(async (tx) => {
         const rows = await tx.select({ t: tenants, p: properties }).from(tenants).innerJoin(properties, eq(properties.tenantId, tenants.id))

@@ -40,6 +40,7 @@ Tenants add a domain in **Website → Domains** and create a TXT record `_stays-
 | `sla-sweep` | every minute | Escalate requests past their target time |
 | `reconcile-gateway` | every 5 minutes | Ask the gateway about payments whose webhook never arrived |
 | `reminders` | every 10 minutes | Pre-arrival (with online check-in link), experience and table reminders, post-stay feedback requests — each sent once |
+| `daily-report` | hourly | After 7 am local time, email yesterday’s figures to everyone with Reports access (once per day; also sent when the night audit closes a day) |
 | `ical-sync` | every 30 minutes | Import OTA calendars (Airbnb, Booking.com…) and hold or release rooms; clashes are flagged, never oversold |
 | `generate-housekeeping` | 00:30 daily | Create stayover cleaning tasks for occupied rooms |
 
@@ -75,3 +76,9 @@ The platform console (`/platform`) is served only on `PLATFORM_HOST`; every othe
 - A manager opens **Settings → Staff & roles → Shared devices** *on the tablet or phone itself* and sets it up; the browser gets a long-lived httpOnly device cookie. Removing a device ends every shift session on it.
 - Staff set a 4–6 digit PIN in **Your account** (guessable PINs like 1234 or 0000 are refused). On a shared device they tap their name at `/admin/pin`; the session lasts one 12-hour shift and counts as two-step sign-in (device + PIN). Five wrong PINs lock PIN sign-in for 15 minutes. Owners always use their password.
 - **Housekeeping → Room QR codes** prints a code per room. Scanning opens the room’s page: start/finish the clean, pass or fail inspection, or report a fault (becomes a maintenance ticket and can take the room out of sale).
+
+## Night audit and cash drawers
+
+- **Front office → Night audit** closes business days in order. It lists guests due out still checked in (must be resolved), expected arrivals that haven’t come (mark as no-shows or keep), UPI payments awaiting verification, open kitchen orders and open cash drawers, then freezes the day’s figures (occupancy, ADR, RevPAR, revenue by department, money received by method and tender, balances owed) and emails the daily report.
+- **Front office → Cash drawer**: open with a float; cash recorded against bookings joins your drawer; record paid-outs, paid-ins and safe drops; count up to close — a difference needs a note. Managers see every shift’s over/short.
+- New permissions `frontoffice.audit` and `cash.handle` are granted to the default Front Desk and General Manager roles (and Restaurant Manager for cash) automatically when the API starts — only permissions new to the database are granted, so customised roles keep their removals.

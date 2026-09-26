@@ -98,7 +98,7 @@ export function BookingDrawer({ id, onClose, onChanged, onMove }: { id: string |
               </tbody>
             </table>
             <div className="mt-3 flex flex-wrap gap-2">
-              {write && balance > 0 && !['cancelled', 'expired'].includes(b.status) && <button className="btn btn-sm" onClick={() => { setForm({ amount: String(balance / 100) }); setModal('pay'); }}>Record payment</button>}
+              {write && balance > 0 && !['cancelled', 'expired'].includes(b.status) && <button className="btn btn-sm" onClick={() => { setForm({ amount: String(balance / 100), tender: 'cash' }); setModal('pay'); }}>Record payment</button>}
               <button className="btn btn-sm" disabled={busy} onClick={() => act('invoice', { issue: false }, 'Invoice updated')}>{d.invoice ? `Refresh ${d.invoice.number}` : 'Draft invoice'}</button>
               {d.invoice && <a className="btn btn-sm" href={`/admin/invoice/${d.invoice.id}`} target="_blank" rel="noreferrer">Open invoice</a>}
             </div>
@@ -152,10 +152,15 @@ export function BookingDrawer({ id, onClose, onChanged, onMove }: { id: string |
         <p className="hint mt-3">Availability is re-checked and the stay is re-priced at current rates.</p>
       </Modal>
       <Modal open={modal === 'pay'} onClose={() => setModal(null)} title="Record a payment"
-        footer={<><button className="btn" onClick={() => setModal(null)}>Close</button><button className="btn btn-primary" disabled={busy || !form.amount} onClick={() => run(() => staffApi(`/admin/bookings/${id}/payments`, { body: { amount: toMinor(form.amount!), note: form.note || undefined, utr: form.utr || undefined } }), 'Payment recorded').then((r) => { if (r) { refresh(); setModal(null); } })}>Record</button></>}>
+        footer={<><button className="btn" onClick={() => setModal(null)}>Close</button><button className="btn btn-primary" disabled={busy || !form.amount} onClick={() => run(() => staffApi(`/admin/bookings/${id}/payments`, { body: { amount: toMinor(form.amount!), tender: form.tender || 'cash', note: form.note || undefined, utr: form.utr || undefined } }), 'Payment recorded').then((r) => { if (r) { refresh(); setModal(null); } })}>Record</button></>}>
         <p className="mb-3 text-muted">For money taken at the desk — cash, card terminal, or UPI paid directly to the property.</p>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Amount (₹)"><input className="input num" inputMode="decimal" value={form.amount ?? ''} onChange={set('amount')} /></Field>
+          <Field label="Paid by" hint="Cash goes into your open cash drawer">
+            <select className="input" value={form.tender ?? 'cash'} onChange={set('tender')}>
+              <option value="cash">Cash</option><option value="card">Card</option><option value="upi">UPI at the desk</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option>
+            </select>
+          </Field>
           <Field label="UPI UTR (optional)"><input className="input font-mono" value={form.utr ?? ''} onChange={set('utr')} /></Field>
         </div>
         <Field label="Note" className="mt-3"><input className="input" value={form.note ?? ''} onChange={set('note')} placeholder="Card, terminal 2" /></Field>

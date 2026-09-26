@@ -11,11 +11,18 @@ export default function Account() {
   const { busy, run } = useAction();
   const [pin, setPin] = useState({ pin: '', password: '' });
   const [hasPin, setHasPin] = useState(me.user.hasPin);
+  const [daily, setDaily] = useState(me.user.dailyReport);
+  const reports = me.isOwner || me.permissions.includes('reports.read');
   return (
     <>
       <PageHeader title="Your account" sub={`${me.user.name} · ${me.user.email}`} />
       <AccountSecurity />
       <div className="max-w-3xl bg-panel">
+        {reports && (
+          <Section title="Emails">
+            <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={daily} onChange={(e) => { const v = e.target.checked; setDaily(v); run(() => staffApi('/auth/preferences', { method: 'PATCH', body: { dailyReport: v } }), v ? 'You’ll get the daily report' : 'Daily report turned off'); }} /> Email me the daily report each morning (occupancy, revenue, payments)</label>
+          </Section>
+        )}
         <Section title="Shift PIN">
           <p className="mb-3 text-[13px] text-muted">{me.isOwner ? 'Owners always sign in with their password, so a PIN isn’t used for your account.' : `Sign in on the property’s shared tablets and phones by tapping your name and entering this PIN. ${hasPin ? 'You have a PIN set.' : 'You don’t have one yet.'}`}</p>
           {!me.isOwner && (

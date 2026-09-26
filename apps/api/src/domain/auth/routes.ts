@@ -108,7 +108,7 @@ export const authRoutes: Routes = async (app, { config }) => {
       return { kind: 'guest', guest: { id: g!.id, firstName: g!.firstName, lastName: g!.lastName, email: g!.email, phone: g!.phone }, tenant: pickTenant(req.tenant) };
     }
     const [u] = await asSystem((tx) => tx.select().from(users).where(eq(users.id, a.userId)));
-    const base = { id: u!.id, name: u!.name, email: u!.email, emailVerified: !!u!.emailVerifiedAt, mfaEnabled: !!u!.mfaEnabledAt, mfa: a.mfa ?? null, hasPin: !!u!.pinHash };
+    const base = { id: u!.id, name: u!.name, email: u!.email, emailVerified: !!u!.emailVerifiedAt, mfaEnabled: !!u!.mfaEnabledAt, mfa: a.mfa ?? null, hasPin: !!u!.pinHash, dailyReport: u!.notificationPrefs?.dailyReport !== false };
     if (a.type === 'platform') return { kind: 'platform', user: base };
     const device = await deviceOf(req);
     return { kind: 'staff', user: base, isOwner: a.isOwner, permissions: [...a.permissions], tenant: pickTenant(req.tenant), sharedDevice: device?.tenantId === a.tenantId ? device.name : null };
