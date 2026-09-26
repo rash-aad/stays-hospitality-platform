@@ -5,7 +5,8 @@ import { randomUUID } from 'node:crypto';
 import { AppError, badRequest, unauthorized } from '../../http/errors.js';
 import { asSystem, type Tx } from '../../infra/db.js';
 import { randomToken, sha256 } from '../../lib/ids.js';
-import { signAccess, ACCESS_TTL_SECONDS, type AccessClaims } from './tokens.js';
+import { mfaRequired } from './mfa.js';
+import { signAccess, signMfaChallenge, ACCESS_TTL_SECONDS, type AccessClaims, type MfaState } from './tokens.js';
 
 export const REFRESH_TTL_DAYS = 30;
 const MAX_FAILED = 5;
@@ -26,10 +27,11 @@ export type Session = { accessToken: string; expiresIn: number; refreshToken: st
 export async function issueSession(
   tx: Tx,
   claims: AccessClaims,
-  opts: { userAgent?: string; familyId?: string } = {},
+  opts: { userAgent?: string; familyId?: string; ip?: string; deviceId?: string | null } = {},
 ): Promise<Session> {
   const refreshToken = randomToken(48);
   await tx.insert(refreshTokens).values({
+    ip: opts.ip?.slice(0, 60), deviceId: opts.deviceId ?? null, mfa: claims.typ === 'guest' ? null : claims.mfa ?? null,
     tenantId: 'tid' in claims ? claims.tid : null,
     userId: claims.typ === 'guest' ? null : claims.sub,
     guestId: claims.typ === 'guest' ? claims.sub : null,
@@ -42,7 +44,7 @@ export async function issueSession(
 }
 
 /** Staff and platform login. Email may exist in several tenants; `tenantSlug` disambiguates. */
-export async function staffLogin(input: { email: string; password: string; tenantSlug?: string; userAgent?: string }) {
+export async function staffLogin(input: { email: string; password: string; tenantSlug?: string; userAgent?: string; ip?: string; allowPlatform?: (ip: string) => boolean }) {
   // Failure bookkeeping (failed-attempt counters, lockouts) must commit, so errors are raised after the transaction.
   const outcome = await asSystem(async (tx) => {
     const rows = await tx
@@ -83,12 +85,18 @@ export async function staffLogin(input: { email: string; password: string; tenan
     const m = matches[0]!;
     if (m.user.status !== 'active') throw unauthorized('This account is not active');
     if (m.user.tenantId && m.tenantStatus !== 'active') throw unauthorized('This workspace is suspended');
-    await tx.update(users).set({ failedLogins: 0, lockedUntil: null, lastLoginAt: now }).where(eq(users.id, m.user.id));
-    const claims: AccessClaims = m.user.isPlatformAdmin && !m.user.tenantId
-      ? { typ: 'platform', sub: m.user.id }
-      : { typ: 'staff', sub: m.user.id, tid: m.user.tenantId! };
-    const session = await issueSession(tx, claims, { userAgent: input.userAgent });
-    return { session, user: { id: m.user.id, name: m.user.name, email: m.user.email }, tenant: m.tenantSlug ? { slug: m.tenantSlug, name: m.tenantName } : null };
+    const isPlatform = m.user.isPlatformAdmin && !m.user.tenantId;
+    if (isPlatform && input.allowPlatform && !input.allowPlatform(input.ip ?? '')) throw new AppError(403, 'ip_not_allowed', 'The platform console can’t be used from this network');
+    await tx.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, m.user.id));
+    const user = { id: m.user.id, name: m.user.name, email: m.user.email };
+    const tenant = m.tenantSlug ? { slug: m.tenantSlug, name: m.tenantName } : null;
+    // Two-step sign-in: the password alone only earns a short-lived challenge.
+    if (m.user.mfaEnabledAt) return { mfaChallenge: await signMfaChallenge(m.user.id), user, tenant };
+    await tx.update(users).set({ lastLoginAt: now }).where(eq(users.id, m.user.id));
+    const mfa: MfaState | undefined = (await mfaRequired(tx, m.user)) ? 'pending' : undefined;
+    const claims: AccessClaims = isPlatform ? { typ: 'platform', sub: m.user.id, mfa } : { typ: 'staff', sub: m.user.id, tid: m.user.tenantId!, mfa };
+    const session = await issueSession(tx, claims, { userAgent: input.userAgent, ip: input.ip });
+    return { session, user, tenant };
   });
   if ('error' in outcome) throw outcome.error;
   return outcome;
@@ -118,13 +126,13 @@ export async function rotateRefresh(token: string, userAgent?: string) {
     return 'stolen' as const;
   });
   if (outcome === 'stolen') throw unauthorized('Session expired');
-  if (typeof outcome === 'object') return asSystem(async (tx) => issueSession(tx, await claimsFor(tx, outcome.grace), { userAgent, familyId: outcome.grace.familyId }));
+  if (typeof outcome === 'object') return asSystem(async (tx) => issueSession(tx, await claimsFor(tx, outcome.grace), { userAgent, familyId: outcome.grace.familyId, ip: outcome.grace.ip ?? undefined, deviceId: outcome.grace.deviceId }));
   return asSystem(async (tx) => {
     const [row] = await tx.select().from(refreshTokens).where(eq(refreshTokens.tokenHash, sha256(token))).for('update');
     if (!row || row.revokedAt) throw unauthorized('Session expired');
     if (row.expiresAt < new Date()) throw unauthorized('Session expired');
     await tx.update(refreshTokens).set({ revokedAt: new Date() }).where(eq(refreshTokens.id, row.id));
-    return issueSession(tx, await claimsFor(tx, row), { userAgent, familyId: row.familyId });
+    return issueSession(tx, await claimsFor(tx, row), { userAgent, familyId: row.familyId, ip: row.ip ?? undefined, deviceId: row.deviceId });
   });
 }
 
@@ -138,7 +146,9 @@ async function claimsFor(tx: Tx, row: typeof refreshTokens.$inferSelect): Promis
   }
   const [u] = await tx.select().from(users).where(eq(users.id, row.userId!));
   if (!u || u.status !== 'active') throw unauthorized('Session expired');
-  return u.isPlatformAdmin && !u.tenantId ? { typ: 'platform', sub: u.id } : { typ: 'staff', sub: u.id, tid: u.tenantId! };
+  // A session keeps its second-factor state; a policy switched on later demotes older sessions to 'pending'.
+  const mfa: MfaState | undefined = row.mfa === 'ok' ? 'ok' : (await mfaRequired(tx, u)) || u.mfaEnabledAt ? 'pending' : undefined;
+  return u.isPlatformAdmin && !u.tenantId ? { typ: 'platform', sub: u.id, mfa } : { typ: 'staff', sub: u.id, tid: u.tenantId!, mfa };
 }
 
 export async function revokeRefresh(token: string) {

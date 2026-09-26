@@ -61,3 +61,11 @@ The platform console (`/platform`) is served only on `PLATFORM_HOST`; every othe
 
 - **Development:** `npm run dev:platform` serves it on http://localhost:3001 (`apps/web/.env.local`: `PLATFORM_HOST=localhost:3001`, `NEXT_PUBLIC_PLATFORM_URL=http://localhost:3001`).
 - **Production:** set `CONSOLE_HOST=console.example.com` for `deploy/docker-compose.prod.yml`; Caddy gives it its own certificate. Consider restricting it further by IP allow-list in the Caddyfile.
+
+## Two-step sign-in and sessions
+
+- Staff and platform admins can turn on authenticator-app codes (TOTP) with ten single-use recovery codes in **Your account**. Each code is accepted once.
+- **Settings → Security** makes it mandatory for owners/managers or everyone; affected people must set it up before they can use the admin (existing sessions are stepped up within 15 minutes). Owners must enrol themselves first.
+- Platform admins must use it in production (`PLATFORM_REQUIRE_MFA`, default on when `NODE_ENV=production`). `PLATFORM_IP_ALLOWLIST` (comma-separated IPs/CIDRs) restricts the console at the API.
+- Lost phone: an owner uses **Staff & roles → Reset two-step**, which also signs that person out everywhere.
+- **Your account → Where you’re signed in** lists devices and can sign out the others.

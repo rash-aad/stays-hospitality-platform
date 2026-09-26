@@ -23,6 +23,10 @@ const schema = z.object({
   VAPID_SUBJECT: z.string().default('mailto:ops@example.com'),
   /** Run BullMQ workers inside the API process (dev convenience). */
   INLINE_WORKER: z.enum(['0', '1']).default('1'),
+  /** Require two-step sign-in for platform administrators (defaults to on in production). */
+  PLATFORM_REQUIRE_MFA: z.enum(['0', '1']).optional(),
+  /** Comma-separated IPs/CIDRs allowed to use the Super Admin console. Empty = anywhere. */
+  PLATFORM_IP_ALLOWLIST: z.string().optional(),
 });
 
 export type Config = z.infer<typeof schema>;

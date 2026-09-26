@@ -23,6 +23,7 @@ import { eventRoutes } from './domain/events/routes.js';
 import { billingRoutes } from './domain/billing/routes.js';
 import { engagementRoutes } from './domain/engagement/routes.js';
 import { channelAdminRoutes, channelRoutes } from './domain/channels/routes.js';
+import { securityRoutes } from './domain/auth/security-routes.js';
 
 export const registerRoutes: Routes = async (app, { config }) => {
   const opts = { config };
@@ -51,4 +52,5 @@ export const registerRoutes: Routes = async (app, { config }) => {
   await app.register(engagementRoutes, opts);
   await app.register(channelRoutes, opts);
   await app.register(channelAdminRoutes, opts);
+  await app.register(securityRoutes, opts);
 };

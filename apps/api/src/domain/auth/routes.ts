@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { guests, properties, tenants, users } from '@hp/db';
 import { and, eq, sql } from 'drizzle-orm';
 import type { FastifyReply, FastifyRequest } from 'fastify';
@@ -10,64 +9,74 @@ import { asSystem, withTenant } from '../../infra/db.js';
 import { audit } from '../../lib/audit.js';
 import { notify } from '../notifications/notify.js';
 import { siteUrl } from '../../lib/site-url.js';
+import { platformIpAllowed } from '../../lib/ip-allow.js';
+import { runtimeConfig } from '../../runtime.js';
+import { checkSecondFactor } from './mfa.js';
+import { verifyMfaChallenge } from './tokens.js';
+import { cookieAudFor } from './http.js';
+import { COOKIE, loginLimit, refreshLimit, sessionOut, setRefreshCookie, type Audience } from './http.js';
 import {
   consumeOneTimeToken, createOneTimeToken, hashPassword, issueSession, revokeRefresh, rotateRefresh,
   staffLogin, validatePasswordStrength, verifyPassword, REFRESH_TTL_DAYS, type Session,
 } from './service.js';
 
-const COOKIE = { staff: 'hp_rt_staff', guest: 'hp_rt_guest', platform: 'hp_rt_platform' } as const; // platform sessions get their own cookie so a hotel login in the same browser can't clobber them
-type Audience = keyof typeof COOKIE;
-
-const sessionOut = z.object({ accessToken: z.string(), expiresIn: z.number() });
-/**
- * Sign-in style endpoints: 10 a minute per address *and account* — staff at one hotel share an IP, so a
- * pure per-IP limit would lock out a whole front desk at shift change. The global per-IP limit still applies.
- */
-const loginLimit = {
-  rateLimit: {
-    max: 10, timeWindow: '1 minute', hook: 'preHandler' as const,
-    keyGenerator: (req: FastifyRequest) => {
-      const email = (req.body as { email?: unknown } | undefined)?.email;
-      return typeof email === 'string' ? `${req.ip}|${email.toLowerCase()}` : req.ip;
-    },
-  },
-};
-/** Refresh is limited per session (hashed cookie), not per IP, for the same shared-NAT reason. */
-const refreshLimit = {
-  rateLimit: {
-    max: 60, timeWindow: '1 minute',
-    keyGenerator: (req: FastifyRequest) => {
-      const c = req.cookies?.[COOKIE[(req.query as { aud?: Audience }).aud ?? 'staff']] ?? req.cookies?.[COOKIE.staff];
-      return c ? createHash('sha256').update(c).digest('base64url') : req.ip;
-    },
-  },
-};
-
 export const authRoutes: Routes = async (app, { config }) => {
-  const secure = config.NODE_ENV === 'production';
-  function setRefresh(reply: FastifyReply, aud: Audience, s: Session) {
-    reply.setCookie(COOKIE[aud], s.refreshToken, {
-      httpOnly: true, secure, sameSite: 'lax', path: '/api/v1/auth', maxAge: REFRESH_TTL_DAYS * 86400,
-    });
-    return { accessToken: s.accessToken, expiresIn: s.expiresIn };
-  }
+  const setRefresh = setRefreshCookie;
   /** Cookie-authenticated endpoints require a custom header: cross-site forms cannot set it and CORS blocks scripts. */
   function assertCsrf(headers: Record<string, unknown>) {
     if (headers['x-csrf'] !== '1') throw new AppError(403, 'csrf', 'Missing CSRF header');
   }
 
   // ---------------- Staff / platform ----------------
+  const platformIps = (ip: string) => platformIpAllowed(ip, runtimeConfig().PLATFORM_IP_ALLOWLIST);
+  const userOut = z.object({ id: z.string(), name: z.string(), email: z.string() });
+  const workspaceOut = z.object({ slug: z.string().nullable(), name: z.string().nullable() }).nullable();
   app.post('/auth/staff/login', {
     config: loginLimit,
     schema: {
       tags: ['auth'],
       body: z.object({ email: z.string().email(), password: z.string().min(1).max(200), workspace: z.string().optional() }),
-      response: { 200: sessionOut.extend({ user: z.object({ id: z.string(), name: z.string(), email: z.string() }), kind: z.enum(['staff', 'platform']), workspace: z.object({ slug: z.string().nullable(), name: z.string().nullable() }).nullable() }) },
+      response: {
+        200: z.union([
+          sessionOut.extend({ user: userOut, kind: z.enum(['staff', 'platform']), workspace: workspaceOut, mfa: z.enum(['ok', 'pending']).nullable() }),
+          z.object({ mfaRequired: z.literal(true), challenge: z.string(), user: userOut, workspace: workspaceOut }),
+        ]),
+      },
     },
   }, async (req, reply) => {
-    const r = await staffLogin({ ...req.body, tenantSlug: req.body.workspace, userAgent: req.headers['user-agent'] });
-    await asSystem((tx) => audit(tx, req, { action: 'auth.login', entityType: 'user', entityId: r.user.id, tenantId: 'tid' in r.session.claims ? r.session.claims.tid : null, actor: { type: r.session.claims.typ === 'platform' ? 'platform' : 'user', id: r.user.id } }));
-    return { ...setRefresh(reply, r.session.claims.typ === 'platform' ? 'platform' : 'staff', r.session), user: r.user, kind: r.session.claims.typ === 'platform' ? 'platform' as const : 'staff' as const, workspace: r.tenant };
+    const r = await staffLogin({ ...req.body, tenantSlug: req.body.workspace, userAgent: req.headers['user-agent'], ip: req.ip, allowPlatform: platformIps });
+    if ('mfaChallenge' in r) return { mfaRequired: true as const, challenge: r.mfaChallenge!, user: r.user, workspace: r.tenant };
+    return completeLogin(req, reply, r.session!, r.user, r.tenant);
+  });
+
+  async function completeLogin(req: FastifyRequest, reply: FastifyReply, session: Session, user: { id: string; name: string; email: string }, workspace: { slug: string | null; name: string | null } | null) {
+    const c = session.claims;
+    await asSystem((tx) => audit(tx, req, { action: 'auth.login', entityType: 'user', entityId: user.id, tenantId: 'tid' in c ? c.tid : null, actor: { type: c.typ === 'platform' ? 'platform' : 'user', id: user.id } }));
+    const mfa = c.typ === 'guest' ? null : c.mfa ?? null;
+    return { ...setRefresh(reply, cookieAudFor(session), session), user, kind: c.typ === 'platform' ? 'platform' as const : 'staff' as const, workspace, mfa };
+  }
+
+  /** Second step of sign-in: exchange the password challenge plus an authenticator or recovery code for a session. */
+  app.post('/auth/staff/mfa', {
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    schema: {
+      tags: ['auth'], body: z.object({ challenge: z.string().min(10).max(2000), code: z.string().min(6).max(20) }),
+      response: { 200: sessionOut.extend({ user: userOut, kind: z.enum(['staff', 'platform']), workspace: workspaceOut, mfa: z.enum(['ok', 'pending']).nullable() }) },
+    },
+  }, async (req, reply) => {
+    const userId = await verifyMfaChallenge(req.body.challenge);
+    if (!userId) throw unauthorized('Your sign-in took too long — enter your password again');
+    const r = await asSystem(async (tx) => {
+      const [row] = await tx.select({ u: users, slug: tenants.slug, name: tenants.name }).from(users).leftJoin(tenants, eq(tenants.id, users.tenantId)).where(eq(users.id, userId));
+      if (!row || row.u.status !== 'active' || !row.u.mfaEnabledAt) throw unauthorized('Session expired');
+      await checkSecondFactor(tx, row.u, req.body.code);
+      await tx.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId));
+      const isPlatform = row.u.isPlatformAdmin && !row.u.tenantId;
+      if (isPlatform && !platformIps(req.ip)) throw new AppError(403, 'ip_not_allowed', 'The platform console can’t be used from this network');
+      const session = await issueSession(tx, isPlatform ? { typ: 'platform', sub: userId, mfa: 'ok' } : { typ: 'staff', sub: userId, tid: row.u.tenantId!, mfa: 'ok' }, { userAgent: req.headers['user-agent'], ip: req.ip });
+      return { session, user: { id: row.u.id, name: row.u.name, email: row.u.email }, workspace: row.slug ? { slug: row.slug, name: row.name } : null };
+    });
+    return completeLogin(req, reply, r.session, r.user, r.workspace);
   });
 
   app.post('/auth/refresh', {
@@ -98,7 +107,7 @@ export const authRoutes: Routes = async (app, { config }) => {
       return { kind: 'guest', guest: { id: g!.id, firstName: g!.firstName, lastName: g!.lastName, email: g!.email, phone: g!.phone }, tenant: pickTenant(req.tenant) };
     }
     const [u] = await asSystem((tx) => tx.select().from(users).where(eq(users.id, a.userId)));
-    const base = { id: u!.id, name: u!.name, email: u!.email, emailVerified: !!u!.emailVerifiedAt };
+    const base = { id: u!.id, name: u!.name, email: u!.email, emailVerified: !!u!.emailVerifiedAt, mfaEnabled: !!u!.mfaEnabledAt, mfa: a.mfa ?? null };
     if (a.type === 'platform') return { kind: 'platform', user: base };
     return { kind: 'staff', user: base, isOwner: a.isOwner, permissions: [...a.permissions], tenant: pickTenant(req.tenant) };
   });

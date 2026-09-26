@@ -74,6 +74,7 @@ export const tenantAdminRoutes: Routes = async (app, { config }) => {
       const rows = await tx
         .select({
           id: users.id, name: users.name, email: users.email, status: users.status, lastLoginAt: users.lastLoginAt,
+          mfaEnabled: sql<boolean>`${users.mfaEnabledAt} is not null`, hasPin: sql<boolean>`${users.pinHash} is not null`,
           roles: sql<{ id: string; key: string; name: string }[]>`coalesce((select json_agg(json_build_object('id', r.id, 'key', r.key, 'name', r.name)) from user_roles ur join roles r on r.id = ur.role_id where ur.user_id = ${outer(users.id)}), '[]')`,
         })
         .from(users).where(where).orderBy(users.name).limit(req.query.pageSize).offset(offset(req.query));

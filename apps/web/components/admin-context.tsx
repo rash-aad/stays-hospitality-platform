@@ -4,7 +4,7 @@ import { createContext, useContext } from 'react';
 
 export type Me = {
   kind: 'staff';
-  user: { id: string; name: string; email: string };
+  user: { id: string; name: string; email: string; mfaEnabled: boolean; mfa: 'ok' | 'pending' | null };
   isOwner: boolean;
   permissions: string[];
   tenant: { id: string; slug: string; name: string; currency: string; timezone: string; modules: string[] };

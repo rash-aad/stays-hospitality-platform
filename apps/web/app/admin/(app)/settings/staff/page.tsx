@@ -7,7 +7,7 @@ import { staffApi } from '@/lib/api';
 import { ago } from '@/lib/format';
 import { useStaff } from '@/lib/hooks';
 
-type Staff = { id: string; name: string; email: string; status: string; lastLoginAt: string | null; roles: { id: string; key: string; name: string }[] };
+type Staff = { id: string; name: string; email: string; status: string; lastLoginAt: string | null; mfaEnabled: boolean; hasPin: boolean; roles: { id: string; key: string; name: string }[] };
 type Role = { id: string; key: string; name: string; isSystem: boolean; permissions: string[] };
 
 export default function StaffPage() {
@@ -15,7 +15,7 @@ export default function StaffPage() {
   const [tab, setTab] = useState<'people' | 'roles'>('people');
   const { data: people, error, mutate } = useStaff<{ data: Staff[] }>('/admin/staff?pageSize=200');
   const { data: roles, mutate: mr } = useStaff<{ data: Role[]; catalog: { key: string; description: string }[] }>('/admin/roles');
-  const [edit, setEdit] = useState<{ id?: string; name: string; email: string; roleIds: string[]; status?: string } | null>(null);
+  const [edit, setEdit] = useState<{ id?: string; name: string; email: string; roleIds: string[]; status?: string; mfaEnabled?: boolean } | null>(null);
   const [role, setRole] = useState<{ id?: string; name: string; permissions: string[]; isSystem?: boolean; key?: string } | null>(null);
   const { busy, run } = useAction();
   return (
@@ -27,12 +27,13 @@ export default function StaffPage() {
       {tab === 'people' ? (!people ? <Loading /> : (
         <div className="bg-panel">
           <table className="tbl">
-            <thead><tr><th>Name</th><th>Roles</th><th>Status</th><th>Last sign-in</th></tr></thead>
+            <thead><tr><th>Name</th><th>Roles</th><th>Status</th><th>Two-step</th><th>Last sign-in</th></tr></thead>
             <tbody>{people.data.map((u) => (
-              <tr key={u.id} className="is-link" onClick={() => setEdit({ id: u.id, name: u.name, email: u.email, roleIds: u.roles.map((r) => r.id), status: u.status })}>
+              <tr key={u.id} className="is-link" onClick={() => setEdit({ id: u.id, name: u.name, email: u.email, roleIds: u.roles.map((r) => r.id), status: u.status, mfaEnabled: u.mfaEnabled })}>
                 <td><p className="font-medium">{u.name}{u.id === me.user.id && <span className="text-muted"> (you)</span>}</p><p className="text-xs text-muted">{u.email}</p></td>
                 <td>{u.roles.map((r) => r.name).join(', ')}</td>
                 <td><Status value={u.status} /></td>
+                <td>{u.mfaEnabled ? <span className="chip chip-ok">On</span> : <span className="text-muted">Off</span>}</td>
                 <td className="text-muted">{u.lastLoginAt ? ago(u.lastLoginAt) : 'Never'}</td>
               </tr>
             ))}</tbody>
@@ -53,6 +54,7 @@ export default function StaffPage() {
       <Drawer open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? edit.name : 'Invite a team member'} sub={!edit?.id && 'They’ll get an email to set their password.'}
         footer={edit && <>
           {edit.id && edit.id !== me.user.id && <button className="btn btn-danger mr-auto" disabled={busy} onClick={() => run(() => staffApi(`/admin/staff/${edit.id}`, { method: 'PATCH', body: { status: edit.status === 'disabled' ? 'active' : 'disabled' } }), edit.status === 'disabled' ? 'Access restored' : 'Access removed').then(() => { setEdit(null); mutate(); })}>{edit.status === 'disabled' ? 'Restore access' : 'Remove access'}</button>}
+          {edit.id && edit.id !== me.user.id && edit.mfaEnabled && <button className="btn" disabled={busy} onClick={() => run(() => staffApi(`/admin/staff/${edit.id}/reset-mfa`, { body: {} }), 'Two-step sign-in reset — they’ll set it up again at next sign-in').then(() => { setEdit(null); mutate(); })}>Reset two-step</button>}
           <button className="btn btn-primary" disabled={busy || !edit.name || !edit.roleIds.length} onClick={() => run(() => edit.id ? staffApi(`/admin/staff/${edit.id}`, { method: 'PATCH', body: { name: edit.name, ...(edit.id !== me.user.id ? { roleIds: edit.roleIds } : {}) } }) : staffApi('/admin/staff', { body: { name: edit.name, email: edit.email, roleIds: edit.roleIds } }), edit.id ? 'Saved' : 'Invitation sent').then((r) => { if (r !== undefined) { setEdit(null); mutate(); } })}>{edit.id ? 'Save' : 'Send invite'}</button>
         </>}>
         {edit && (

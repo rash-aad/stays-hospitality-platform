@@ -12,8 +12,8 @@ export type TenantInfo = {
 
 export type Actor =
   | { type: 'anon' }
-  | { type: 'platform'; userId: string }
-  | { type: 'staff'; userId: string; tenantId: string; permissions: Set<Permission>; isOwner: boolean }
+  | { type: 'platform'; userId: string; mfa?: 'ok' | 'pending' }
+  | { type: 'staff'; userId: string; tenantId: string; permissions: Set<Permission>; isOwner: boolean; mfa?: 'ok' | 'pending' }
   | { type: 'guest'; guestId: string; tenantId: string };
 
 declare module 'fastify' {

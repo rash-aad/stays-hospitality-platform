@@ -4,7 +4,9 @@ import { loadStaffAccess } from '../domain/auth/permissions.js';
 import { verifyAccess } from '../domain/auth/tokens.js';
 import { loadTenant, resolveHost, resolveSlug } from '../domain/tenants/tenant-cache.js';
 import type { Actor, TenantInfo } from './context.js';
-import { forbidden, moduleDisabled, notFound, unauthorized } from './errors.js';
+import { AppError, forbidden, moduleDisabled, notFound, unauthorized } from './errors.js';
+import { platformIpAllowed } from '../lib/ip-allow.js';
+import { runtimeConfig } from '../runtime.js';
 
 /** Populates req.actor from the bearer token. Never trusts tenant ids from body/query. */
 export async function authenticate(req: FastifyRequest): Promise<void> {
@@ -14,8 +16,12 @@ export async function authenticate(req: FastifyRequest): Promise<void> {
   if (!header?.startsWith('Bearer ')) return;
   const claims = await verifyAccess(header.slice(7));
   if (!claims) return;
+  // Until the second factor is set up / presented, a session can only reach the auth endpoints.
+  if (claims.typ !== 'guest' && claims.mfa === 'pending' && !req.url.startsWith('/api/v1/auth/')) {
+    throw new AppError(403, 'mfa_required', 'Set up two-step sign-in to continue');
+  }
   if (claims.typ === 'platform') {
-    req.actor = { type: 'platform', userId: claims.sub };
+    req.actor = { type: 'platform', userId: claims.sub, mfa: claims.mfa };
     return;
   }
   const tenant = await loadTenant(claims.tid);
@@ -31,7 +37,7 @@ export async function authenticate(req: FastifyRequest): Promise<void> {
     if (!access.active) return;
     req.actor = {
       type: 'staff', userId: claims.sub, tenantId: tenant.id, isOwner: access.isOwner,
-      permissions: new Set(access.permissions),
+      permissions: new Set(access.permissions), mfa: claims.mfa,
     };
   } else {
     req.actor = { type: 'guest', guestId: claims.sub, tenantId: tenant.id };
@@ -52,6 +58,7 @@ export const requireGuest: preHandlerAsyncHookHandler = async (req) => {
 
 export const requirePlatform: preHandlerAsyncHookHandler = async (req) => {
   if (req.actor.type !== 'platform') throw unauthorized('Platform administrator sign-in required');
+  if (!platformIpAllowed(req.ip, runtimeConfig().PLATFORM_IP_ALLOWLIST)) throw new AppError(403, 'ip_not_allowed', 'The platform console can’t be used from this network');
 };
 
 /** Rejects the request unless every listed module is effective for the request's tenant. */

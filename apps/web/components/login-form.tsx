@@ -18,6 +18,8 @@ export function LoginForm({ surface }: { surface: 'admin' | 'platform' }) {
   const ready = useHydrated();
   const [forgot, setForgot] = useState(false);
   const [sent, setSent] = useState(false);
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [code, setCode] = useState('');
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,13 +31,22 @@ export function LoginForm({ surface }: { surface: 'admin' | 'platform' }) {
         setSent(true);
         return;
       }
-      const r = await fetch('/api/v1/auth/staff/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password, workspace: workspace || undefined }) });
+      const r = challenge
+        ? await fetch('/api/v1/auth/staff/mfa', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ challenge, code }) })
+        : await fetch('/api/v1/auth/staff/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password, workspace: workspace || undefined }) });
       const j = await r.json();
       if (r.status === 409 && j.error?.code === 'choose_workspace') {
         setWorkspaces(j.error.details.workspaces);
         return;
       }
-      if (!r.ok) throw new ApiError(r.status, j.error?.code, j.error?.message ?? 'Sign-in failed');
+      if (!r.ok) {
+        if (challenge && r.status === 401 && /too long/.test(j.error?.message ?? '')) { setChallenge(null); setCode(''); }
+        throw new ApiError(r.status, j.error?.code, j.error?.message ?? 'Sign-in failed');
+      }
+      if (j.mfaRequired) {
+        setChallenge(j.challenge);
+        return;
+      }
       // Each console only accepts its own accounts; the wrong kind is signed straight back out.
       const wrong = surface === 'platform' ? j.kind !== 'platform' : j.kind === 'platform' && !!PLATFORM_URL;
       if (wrong) {
@@ -54,10 +65,17 @@ export function LoginForm({ surface }: { surface: 'admin' | 'platform' }) {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <h1 className="text-lg font-semibold">{forgot ? 'Reset your password' : 'Sign in'}</h1>
+        <h1 className="text-lg font-semibold">{challenge ? 'Two-step sign-in' : forgot ? 'Reset your password' : 'Sign in'}</h1>
         <p className="mt-1 text-[13px] text-muted">{forgot ? 'We’ll email you a link to choose a new password.' : surface === 'platform' ? 'Platform administrators only.' : PLATFORM_URL ? 'Hotel staff accounts.' : 'Staff and platform accounts.'}</p>
       </div>
-      {sent ? (
+      {challenge ? (
+        <>
+          <p className="text-[13px] text-muted">Enter the 6-digit code from your authenticator app, or one of your recovery codes.</p>
+          <label className="block"><span className="label">Verification code</span><input className="input h-10 font-mono tracking-widest" autoComplete="one-time-code" inputMode="text" maxLength={20} required autoFocus value={code} onChange={(e) => setCode(e.target.value.trim())} /></label>
+          {error && <p className="text-[13px] text-bad" role="alert">{error}</p>}
+          <button className="btn btn-primary btn-lg w-full" disabled={busy || !ready || code.length < 6}>{busy ? 'Please wait…' : 'Verify'}</button>
+        </>
+      ) : sent ? (
         <p className="rounded-sm border border-line bg-panel px-3 py-2.5 text-[13px]">If that email belongs to an account, a reset link is on its way.</p>
       ) : (
         <>
@@ -76,9 +94,13 @@ export function LoginForm({ surface }: { surface: 'admin' | 'platform' }) {
           <button className="btn btn-primary btn-lg w-full" disabled={busy || !ready}>{busy ? 'Please wait…' : forgot ? 'Send reset link' : 'Sign in'}</button>
         </>
       )}
-      <button type="button" className="text-[13px] text-muted underline underline-offset-2" onClick={() => { setForgot(!forgot); setSent(false); setError(null); }}>
-        {forgot ? 'Back to sign in' : 'Forgot your password?'}
-      </button>
+      {challenge ? (
+        <button type="button" className="text-[13px] text-muted underline underline-offset-2" onClick={() => { setChallenge(null); setCode(''); setError(null); }}>Back</button>
+      ) : (
+        <button type="button" className="text-[13px] text-muted underline underline-offset-2" onClick={() => { setForgot(!forgot); setSent(false); setError(null); }}>
+          {forgot ? 'Back to sign in' : 'Forgot your password?'}
+        </button>
+      )}
     </form>
   );
 }

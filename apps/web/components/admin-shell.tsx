@@ -8,6 +8,7 @@ import { useStaff } from '@/lib/hooks';
 import { MeCtx, type Me } from './admin-context';
 import { cx, ToastProvider } from './ui';
 import { InstallPwa } from './pwa';
+import { MfaGate } from './mfa';
 
 type Item = { href: string; label: string; perm?: string; mod?: string; anyMod?: string[]; badge?: 'payments' | 'requests' | 'orders' | 'messages' };
 const NAV: { group: string; items: Item[] }[] = [
@@ -48,6 +49,7 @@ const NAV: { group: string; items: Item[] }[] = [
     { href: '/admin/settings/requests', label: 'Request types', perm: 'requests.configure' },
     { href: '/admin/settings/notifications', label: 'Notifications', perm: 'tenant.settings', mod: 'notifications' },
     { href: '/admin/settings/integrations', label: 'Integrations', perm: 'integrations.manage', mod: 'integrations' },
+    { href: '/admin/settings/security', label: 'Security', perm: 'tenant.settings' },
     { href: '/admin/settings/audit', label: 'Audit log', perm: 'audit.read' },
   ] },
 ];
@@ -70,9 +72,10 @@ export function AdminShell({ children, bare }: { children: ReactNode; bare?: boo
   }, [router]);
   useEffect(() => setMenu(false), [path]);
 
-  const { data: dash } = useStaff<{ data: Dash }>(me ? '/admin/dashboard' : null, { refreshInterval: 30_000 });
+  const { data: dash } = useStaff<{ data: Dash }>(me && me.user.mfa !== 'pending' ? '/admin/dashboard' : null, { refreshInterval: 30_000 });
 
   if (!me) return <div className="grid min-h-dvh place-items-center text-[13px] text-muted">Loading workspace…</div>;
+  if (me.user.mfa === 'pending') return <ToastProvider><MfaGate enrolled={me.user.mfaEnabled} loginPath="/admin/login" onDone={() => location.reload()} /></ToastProvider>;
   if (bare) return <MeCtx.Provider value={me}><ToastProvider>{children}</ToastProvider></MeCtx.Provider>;
   const can = (it: Item) =>
     (!it.perm || me.isOwner || me.permissions.includes(it.perm)) &&
@@ -119,7 +122,7 @@ export function AdminShell({ children, bare }: { children: ReactNode; bare?: boo
             </div>
             {nav}
             <div className="border-t border-line px-4 py-3">
-              <p className="truncate text-[13px]">{me.user.name}</p>
+              <Link href="/admin/account" className="block truncate text-[13px] hover:underline">{me.user.name}</Link>
               <div className="mt-1 flex items-center justify-between">
                 <button className="text-xs text-muted hover:text-ink" onClick={async () => { await signOut('staff'); router.replace('/admin/login'); }}>Sign out</button>
                 <InstallPwa compact />

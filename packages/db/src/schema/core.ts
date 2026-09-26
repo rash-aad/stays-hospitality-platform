@@ -57,7 +57,15 @@ export const users = pgTable(
     isPlatformAdmin: boolean('is_platform_admin').notNull().default(false),
     status: text('status', { enum: ['active', 'invited', 'disabled'] }).notNull().default('active'),
     emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+    /** TOTP secret, encrypted with SECRETS_MASTER_KEY. Set during enrolment; active once mfaEnabledAt is set. */
     mfaSecret: text('mfa_secret'),
+    mfaEnabledAt: timestamp('mfa_enabled_at', { withTimezone: true }),
+    /** SHA-256 hashes of unused one-time recovery codes. */
+    mfaRecoveryHashes: text('mfa_recovery_hashes').array().notNull().default(sql`'{}'::text[]`),
+    /** Shift PIN for quick sign-in on an enrolled staff device (argon2 hash). */
+    pinHash: text('pin_hash'),
+    pinFailed: integer('pin_failed').notNull().default(0),
+    pinLockedUntil: timestamp('pin_locked_until', { withTimezone: true }),
     notificationPrefs: jsonb('notification_prefs').$type<Record<string, boolean>>().notNull().default({}),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
     failedLogins: integer('failed_logins').notNull().default(0),

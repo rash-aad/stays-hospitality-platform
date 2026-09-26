@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { expect, type Browser, type Page } from '@playwright/test';
 
 export const SITE = 'http://seabreeze.localhost:3000';
@@ -64,4 +65,17 @@ export async function bookRoom(page: Page, opts: { email: string; first: string;
   await page.getByRole('button', { name: /Continue to payment|Confirm booking/ }).click();
   await page.waitForURL(/\/book\/pay\//);
   return page.url();
+}
+
+/** RFC 6238 code for a base32 secret (what an authenticator app would show), offset in 30 s steps. */
+export function totpCode(secret: string, stepOffset = 0) {
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0, value = 0;
+  const bytes: number[] = [];
+  for (const ch of secret.toUpperCase()) { value = (value << 5) | A.indexOf(ch); bits += 5; if (bits >= 8) { bytes.push((value >>> (bits - 8)) & 255); bits -= 8; } }
+  const msg = Buffer.alloc(8);
+  msg.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000) + stepOffset));
+  const h = createHmac('sha1', Buffer.from(bytes)).update(msg).digest();
+  const o = h[h.length - 1]! & 0xf;
+  return String((((h[o]! & 0x7f) << 24) | (h[o + 1]! << 16) | (h[o + 2]! << 8) | h[o + 3]!) % 1_000_000).padStart(6, '0');
 }
