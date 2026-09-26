@@ -33,7 +33,7 @@ export type StayRequest = {
   addOnIds?: string[];
 };
 
-export async function priceStay(tx: Tx, tenant: TenantInfo, req: StayRequest, opts: { enforceLeadTime?: boolean } = {}) {
+export async function priceStay(tx: Tx, tenant: TenantInfo, req: StayRequest, opts: { enforceLeadTime?: boolean; ignoreStayRules?: boolean } = {}) {
   const [rt] = await tx.select().from(roomTypes).where(and(eq(roomTypes.id, req.roomTypeId), eq(roomTypes.tenantId, tenant.id), eq(roomTypes.active, true)));
   if (!rt) throw notFound('Room type');
   const [plan] = await tx.select().from(ratePlans).where(and(eq(ratePlans.id, req.ratePlanId), eq(ratePlans.roomTypeId, rt.id), eq(ratePlans.active, true)));
@@ -49,8 +49,8 @@ export async function priceStay(tx: Tx, tenant: TenantInfo, req: StayRequest, op
   }
   const seasons = await tx.select().from(rateSeasons).where(and(eq(rateSeasons.ratePlanId, plan.id), lte(rateSeasons.startDate, req.checkOut), sql`${rateSeasons.endDate} >= ${req.checkIn}`));
   const seasonMin = Math.max(plan.minStay, ...seasons.map((s) => s.minStay ?? 0));
-  if (nights < seasonMin) throw badRequest(`${plan.name} requires a minimum stay of ${seasonMin} nights`);
-  if (nights > plan.maxStay) throw badRequest(`${plan.name} allows at most ${plan.maxStay} nights`);
+  if (!opts.ignoreStayRules && nights < seasonMin) throw badRequest(`${plan.name} requires a minimum stay of ${seasonMin} nights`);
+  if (!opts.ignoreStayRules && nights > plan.maxStay) throw badRequest(`${plan.name} allows at most ${plan.maxStay} nights`);
   const taxRows = await tx.select().from(taxes).where(and(eq(taxes.tenantId, tenant.id), eq(taxes.active, true)));
   let coupon: typeof coupons.$inferSelect | undefined;
   let couponError: string | null = null;
@@ -336,10 +336,16 @@ export async function assignableRooms(tx: Tx, b: Booking, roomTypeId: string) {
   return tx.select().from(rooms).where(and(eq(rooms.roomTypeId, roomTypeId), eq(rooms.status, 'active'), notInArray(rooms.id, busy))).orderBy(asc(rooms.number));
 }
 
+/** Serialise room assignment within a room type (two desks can't put different guests in one room). */
+export async function lockRoomAssignments(tx: Tx, roomTypeId: string) {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`room-assign:${roomTypeId}`}))`);
+}
+
 export async function assignRoom(tx: Tx, tenant: TenantInfo, bookingId: string, roomId: string | null) {
   const [b] = await tx.select().from(bookings).where(and(eq(bookings.id, bookingId), eq(bookings.tenantId, tenant.id))).for('update');
   if (!b) throw notFound('Booking');
   const [item] = await tx.select().from(bookingItems).where(and(eq(bookingItems.bookingId, b.id), eq(bookingItems.kind, 'room')));
+  await lockRoomAssignments(tx, item!.roomTypeId!);
   const free = await assignableRooms(tx, b, item!.roomTypeId!);
   const room = roomId ? free.find((r) => r.id === roomId) : free.find((r) => r.housekeepingStatus === 'inspected' || r.housekeepingStatus === 'clean') ?? free[0];
   if (!room) throw conflict(roomId ? 'That room is not available for these dates' : 'No room of this type is free for these dates');

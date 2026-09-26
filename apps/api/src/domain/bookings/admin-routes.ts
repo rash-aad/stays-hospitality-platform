@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { isoDate, money } from '../../http/crud.js';
 import { notFound } from '../../http/errors.js';
 import { requireModule, requireStaff, staffActor, tenantOf } from '../../http/guards.js';
+import { moveBooking, tapeChart } from './tape-chart.js';
 import type { Routes } from '../../http/types.js';
 import { withTenant } from '../../infra/db.js';
 import { audit } from '../../lib/audit.js';
@@ -196,6 +197,31 @@ export const adminBookingRoutes: Routes = async (app) => {
       if (!c) throw notFound('Charge');
       await audit(tx, req, { action: 'folio.void', entityType: 'booking', entityId: req.params.id, changes: { chargeId: c.id, amount: c.amount } });
       return { ok: true };
+    });
+  });
+
+  // ---------------- Tape chart ----------------
+  app.get('/admin/tape-chart', {
+    preHandler: requireStaff('bookings.read'),
+    schema: { tags: ['bookings'], querystring: z.object({ from: isoDate, days: z.coerce.number().int().min(1).max(42).default(14) }) },
+  }, async (req) => {
+    const t = tenantOf(req);
+    return withTenant(t.id, async (tx) => ({ data: await tapeChart(tx, t, req.query.from, req.query.days) }));
+  });
+
+  app.post('/admin/bookings/:id/move', {
+    preHandler: requireStaff('bookings.write'),
+    schema: {
+      tags: ['bookings'], params: z.object({ id: z.string().uuid() }),
+      body: z.object({ roomId: z.string().uuid().nullish(), checkIn: isoDate.optional(), checkOut: isoDate.optional(), pricing: z.enum(['reprice', 'keep']).default('reprice') }),
+    },
+  }, async (req) => {
+    const t = tenantOf(req);
+    const a = staffActor(req);
+    return withTenant(t.id, async (tx) => {
+      const b = await moveBooking(tx, t, req.params.id, req.body, a.userId);
+      await audit(tx, req, { action: 'booking.move', entityType: 'booking', entityId: b.id, changes: req.body });
+      return { data: b };
     });
   });
 };

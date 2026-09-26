@@ -19,7 +19,7 @@ type Detail = {
   assignableRooms: { id: string; number: string; housekeepingStatus: string }[];
 };
 
-export function BookingDrawer({ id, onClose, onChanged }: { id: string | null; onClose: () => void; onChanged: () => void }) {
+export function BookingDrawer({ id, onClose, onChanged, onMove }: { id: string | null; onClose: () => void; onChanged: () => void; onMove?: () => void }) {
   const { data, mutate } = useStaff<{ data: Detail }>(id ? `/admin/bookings/${id}` : null);
   const { busy, run } = useAction();
   const can = useCan();
@@ -41,7 +41,8 @@ export function BookingDrawer({ id, onClose, onChanged }: { id: string | null; o
       sub={b && <span className="flex flex-wrap items-center gap-2"><span className="font-mono text-xs">{b.reference}</span><Status value={b.status} /><Status value={b.paymentStatus} /></span>}
       footer={b && write && (
         <>
-          {b.status === 'confirmed' && <button className="btn" onClick={() => setModal('modify')}>Change dates</button>}
+          {onMove && ['confirmed', 'pending_payment', 'checked_in'].includes(b.status) && <button className="btn" onClick={onMove}>Move / extend</button>}
+          {!onMove && b.status === 'confirmed' && <button className="btn" onClick={() => setModal('modify')}>Change dates</button>}
           {['confirmed', 'pending_payment'].includes(b.status) && <button className="btn btn-danger" onClick={() => setModal('cancel')}>Cancel booking</button>}
           {b.status === 'confirmed' && b.checkIn <= new Date().toISOString().slice(0, 10) && <button className="btn" disabled={busy} onClick={() => act('no-show', {}, 'Marked as no-show')}>No-show</button>}
           {b.status === 'confirmed' && (

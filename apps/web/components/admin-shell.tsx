@@ -15,6 +15,7 @@ const NAV: { group: string; items: Item[] }[] = [
   { group: '', items: [{ href: '/admin', label: 'Today' }] },
   { group: 'Front office', items: [
     { href: '/admin/reservations', label: 'Reservations', perm: 'bookings.read', mod: 'room_booking' },
+    { href: '/admin/tape-chart', label: 'Tape chart', perm: 'bookings.read', mod: 'room_booking' },
     { href: '/admin/calendar', label: 'Rates & availability', perm: 'bookings.read', mod: 'room_booking' },
     { href: '/admin/guests', label: 'Guests', perm: 'guests.read' },
     { href: '/admin/payments', label: 'Payments', perm: 'payments.read', badge: 'payments' },

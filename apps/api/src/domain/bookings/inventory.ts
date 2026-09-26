@@ -24,7 +24,7 @@ export async function ensureLedger(tx: Tx, tenantId: string, roomTypeId: string,
  * Take one unit of inventory for each night. Rows are locked in date order (deadlock-free), and the
  * CHECK (booked <= total) constraint is the final guard against overselling.
  */
-export async function reserveInventory(tx: Tx, tenantId: string, roomTypeId: string, checkIn: string, checkOut: string) {
+export async function reserveInventory(tx: Tx, tenantId: string, roomTypeId: string, checkIn: string, checkOut: string, opts: { skipRestrictions?: boolean } = {}) {
   const dates = eachNight(checkIn, checkOut);
   await ensureLedger(tx, tenantId, roomTypeId, dates);
   const rows = await tx
@@ -34,11 +34,12 @@ export async function reserveInventory(tx: Tx, tenantId: string, roomTypeId: str
     .orderBy(asc(availability.date))
     .for('update');
   const first = rows[0];
-  if (first?.closedToArrival && first.date === checkIn) throw conflict('Arrivals are closed on this date', { date: checkIn });
-  const blocked = rows.find((r) => r.closed || r.booked >= r.total);
+  // Extending or moving a stay isn't a new arrival: stop-sell, closed-to-arrival and minimum-stay rules don't apply.
+  if (!opts.skipRestrictions && first?.closedToArrival && first.date === checkIn) throw conflict('Arrivals are closed on this date', { date: checkIn });
+  const blocked = rows.find((r) => (!opts.skipRestrictions && r.closed) || r.booked >= r.total);
   if (blocked) throw conflict('Sorry — this room type just sold out for your dates', { date: blocked.date });
   const minStay = Math.max(0, ...rows.map((r) => r.minStay ?? 0));
-  if (dates.length < minStay) throw conflict(`A minimum stay of ${minStay} nights applies to these dates`);
+  if (!opts.skipRestrictions && dates.length < minStay) throw conflict(`A minimum stay of ${minStay} nights applies to these dates`);
   await tx
     .update(availability)
     .set({ booked: sql`${availability.booked} + 1` })
