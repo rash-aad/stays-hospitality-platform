@@ -84,3 +84,11 @@ The platform console (`/platform`) is served only on `PLATFORM_HOST`; every othe
 - **Front office → Night audit** closes business days in order. It lists guests due out still checked in (must be resolved), expected arrivals that haven’t come (mark as no-shows or keep), UPI payments awaiting verification, open kitchen orders and open cash drawers, then freezes the day’s figures (occupancy, ADR, RevPAR, revenue by department, money received by method and tender, balances owed) and emails the daily report.
 - **Front office → Cash drawer**: open with a float; cash recorded against bookings joins your drawer; record paid-outs, paid-ins and safe drops; count up to close — a difference needs a note. Managers see every shift’s over/short.
 - New permissions `frontoffice.audit` and `cash.handle` are granted to the default Front Desk and General Manager roles (and Restaurant Manager for cash) automatically when the API starts — only permissions new to the database are granted, so customised roles keep their removals.
+
+## Revenue: automatic pricing
+
+**Insights → Revenue** shows the next 30 nights per room type: selling price after rules (amber = raised, teal = lowered), rooms left, how full the hotel is and what was booked in the last 7 days.
+- Rules: *filling up* (occupancy tiers — only the highest reached applies), *booked ahead* (early bird / last minute) and *nights of the week*; lead-time and weekday rules stack. Preview a rule before saving it.
+- Guardrails: a floor and ceiling per room type; a rule can never price outside them.
+- Rules apply everywhere a stay is priced: booking engine, quotes, date changes, extensions. Extra-guest charges, coupons and GST come after.
+- The booking page shows “Only N rooms left” when real availability drops to the threshold you set (0 turns it off).

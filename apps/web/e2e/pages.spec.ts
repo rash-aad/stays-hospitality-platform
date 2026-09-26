@@ -6,7 +6,7 @@ import { ADMIN, CITY, linkFromEmail, OWNER, PLATFORM, SITE, staffPage } from './
  * Screenshots land in test-results/sweep for a visual once-over.
  */
 const ADMIN_PAGES = [
-  '/admin', '/admin/reservations', '/admin/tape-chart', '/admin/cash-drawer', '/admin/night-audit', '/admin/calendar', '/admin/guests', '/admin/payments', '/admin/messages', '/admin/feedback', '/admin/events',
+  '/admin', '/admin/reservations', '/admin/tape-chart', '/admin/cash-drawer', '/admin/night-audit', '/admin/revenue', '/admin/calendar', '/admin/guests', '/admin/payments', '/admin/messages', '/admin/feedback', '/admin/events',
   '/admin/dining/reservations', '/admin/dining/kitchen', '/admin/dining/menus', '/admin/requests', '/admin/housekeeping', '/admin/maintenance', '/admin/experiences',
   '/admin/site', '/admin/guide', '/admin/reports',
   '/admin/settings/property', '/admin/settings/rates', '/admin/settings/payments', '/admin/settings/billing', '/admin/settings/channels', '/admin/settings/modules',

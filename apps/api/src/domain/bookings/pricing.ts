@@ -68,6 +68,39 @@ export function taxAmount(amount: number, rateBps: number, inclusive: boolean): 
   return Math.round((amount * rateBps) / 10_000);
 }
 
+// ---------------------------------------------------------------- automatic pricing rules
+
+export type PricingRuleInput = {
+  id?: string; name: string; roomTypeId: string | null; kind: 'occupancy' | 'lead_time' | 'day_of_week';
+  params: { minOccupancyPct?: number; minDays?: number; maxDays?: number; days?: number[] }; adjustPct: number;
+};
+/** What a rule can see about a night: how full the room type is and how far ahead the stay starts. */
+export type NightContext = { date: string; occupancyPct: number; leadDays: number };
+
+export function ruleMatches(r: PricingRuleInput, ctx: NightContext): boolean {
+  if (r.kind === 'occupancy') return ctx.occupancyPct >= (r.params.minOccupancyPct ?? 101);
+  if (r.kind === 'lead_time') return (r.params.minDays == null || ctx.leadDays >= r.params.minDays) && (r.params.maxDays == null || ctx.leadDays <= r.params.maxDays);
+  const dow = new Date(`${ctx.date}T00:00:00Z`).getUTCDay();
+  return (r.params.days ?? []).includes(dow);
+}
+
+/**
+ * Apply rules to one night's base price. Occupancy rules are tiers — only the highest threshold reached
+ * applies; lead-time and day-of-week rules stack. Result is rounded to whole rupees and, when any rule
+ * applied, kept within the room type's floor and ceiling.
+ */
+export function dynamicPrice(base: number, ctx: NightContext, rules: PricingRuleInput[], guard: { floor?: number | null; ceiling?: number | null } = {}) {
+  const matched = rules.filter((r) => ruleMatches(r, ctx));
+  const occ = matched.filter((r) => r.kind === 'occupancy').sort((a, b) => (b.params.minOccupancyPct ?? 0) - (a.params.minOccupancyPct ?? 0))[0];
+  const applied = [...(occ ? [occ] : []), ...matched.filter((r) => r.kind !== 'occupancy')];
+  if (!applied.length) return { price: base, applied: [] as string[] };
+  let price = applied.reduce((p, r) => p * (1 + r.adjustPct / 100), base);
+  price = Math.round(price / 100) * 100;
+  if (guard.floor != null) price = Math.max(price, guard.floor);
+  if (guard.ceiling != null) price = Math.min(price, guard.ceiling);
+  return { price, applied: applied.map((r) => r.name) };
+}
+
 export function quoteStay(input: {
   checkIn: string;
   checkOut: string;
@@ -79,10 +112,15 @@ export function quoteStay(input: {
   taxes: TaxInput[];
   coupon?: CouponInput | null;
   addOns?: AddOnInput[];
+  /** Automatic pricing: turns a night's base (season/weekend/plan) rate into the selling rate. */
+  nightPrice?: (date: string, base: number) => number;
 }): Quote {
   const dates = eachNight(input.checkIn, input.checkOut);
   const surcharge = occupancySurcharge(input.plan, input.baseOccupancy, input.adults, input.children);
-  const nights = dates.map((date) => ({ date, price: nightlyBase(date, input.plan, input.seasons) + surcharge }));
+  const nights = dates.map((date) => {
+    const base = nightlyBase(date, input.plan, input.seasons);
+    return { date, price: (input.nightPrice ? input.nightPrice(date, base) : base) + surcharge };
+  });
   const roomSubtotal = nights.reduce((s, n) => s + n.price, 0);
 
   let discount = 0;

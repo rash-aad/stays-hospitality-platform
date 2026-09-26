@@ -40,7 +40,7 @@ const NAV: { group: string; items: Item[] }[] = [
     { href: '/admin/site', label: 'Website', perm: 'content.manage', mod: 'website_builder' },
     { href: '/admin/guide', label: 'Guest guide', perm: 'content.manage', mod: 'guest_portal' },
   ] },
-  { group: 'Insights', items: [{ href: '/admin/reports', label: 'Reports', perm: 'reports.read', mod: 'reports' }] },
+  { group: 'Insights', items: [{ href: '/admin/revenue', label: 'Revenue', perm: 'bookings.read', mod: 'room_booking' }, { href: '/admin/reports', label: 'Reports', perm: 'reports.read', mod: 'reports' }] },
   { group: 'Settings', items: [
     { href: '/admin/settings/property', label: 'Property & rooms', perm: 'property.manage' },
     { href: '/admin/settings/rates', label: 'Rates, taxes & offers', perm: 'property.manage' },

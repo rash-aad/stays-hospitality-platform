@@ -18,6 +18,7 @@ import { notify } from '../notifications/notify.js';
 import { enabledMethods, getSettings, startPayment, type Instructions } from '../payments/service.js';
 import { registerPaymentTarget } from '../payments/targets.js';
 import { releaseInventory, reserveInventory } from './inventory.js';
+import { nightPricer } from '../revenue/rules.js';
 import { cancellationFee, eachNight, quoteStay, type Quote } from './pricing.js';
 
 type Booking = typeof bookings.$inferSelect;
@@ -64,9 +65,10 @@ export async function priceStay(tx: Tx, tenant: TenantInfo, req: StayRequest, op
   const extras = req.addOnIds?.length
     ? await tx.select().from(addOns).where(and(eq(addOns.tenantId, tenant.id), inArray(addOns.id, req.addOnIds), eq(addOns.active, true)))
     : [];
+  const pricer = await nightPricer(tx, tenant.id, prop!.timezone, rt.id, req.checkIn, req.checkOut);
   const quote = quoteStay({
     checkIn: req.checkIn, checkOut: req.checkOut, adults: req.adults, children: req.children, baseOccupancy: rt.baseOccupancy,
-    plan, seasons, taxes: taxRows, coupon: coupon ?? null, addOns: extras,
+    plan, seasons, taxes: taxRows, coupon: coupon ?? null, addOns: extras, nightPrice: pricer?.price,
   });
   if (couponError) quote.couponError = couponError;
   return { quote, roomType: rt, plan, property: prop!, coupon: quote.couponApplied ? coupon! : null };

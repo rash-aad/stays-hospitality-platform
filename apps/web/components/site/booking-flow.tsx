@@ -96,7 +96,8 @@ export function BookingFlow({ propertyName }: { propertyName: string }) {
                 {r.roomType.images[0] ? <img src={r.roomType.images[0].url} alt={r.roomType.images[0].alt} className="aspect-[4/3] w-full object-cover" /> : <div className="t-surface aspect-[4/3]" />}
                 <div>
                   <h2 className="display text-2xl">{r.roomType.name}</h2>
-                  <p className="mt-1 text-sm t-muted">{[r.roomType.sizeSqm && `${r.roomType.sizeSqm} m²`, r.roomType.bedConfig, r.roomType.view, `sleeps ${r.roomType.maxOccupancy}`].filter(Boolean).join(' · ')}{r.unitsLeft ? ` · only ${r.unitsLeft} left` : ''}</p>
+                  <p className="mt-1 text-sm t-muted">{[r.roomType.sizeSqm && `${r.roomType.sizeSqm} m²`, r.roomType.bedConfig, r.roomType.view, `sleeps ${r.roomType.maxOccupancy}`].filter(Boolean).join(' · ')}</p>
+                  {r.unitsLeft ? <p className="mt-2 inline-block text-sm font-medium" style={{ color: 'var(--t-accent)' }} data-testid="units-left">Only {r.unitsLeft} {r.unitsLeft === 1 ? 'room' : 'rooms'} left for your dates</p> : null}
                   {!r.fitsParty && <p className="mt-2 text-sm">Too small for your party.</p>}
                   {r.fitsParty && !r.available && <p className="mt-2 text-sm">{r.minStay ? `Minimum stay ${r.minStay} nights on these dates.` : 'Sold out for these dates.'}</p>}
                   <ul className="mt-4 divide-y t-line border-y t-line">

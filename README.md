@@ -33,6 +33,9 @@ Multi-tenant platform for hotels, resorts and villas: a tenant CRM and operation
 - **Guest journey automation**: pre-arrival email with online check-in, experience and table reminders, waitlist promotion notices, post-stay feedback with NPS and staff replies
 - **Self-service**: guests change dates (priced first, then committed) and complete online check-in (only the last 4 ID characters stored)
 - **Channel sync**: iCal export of sold-out nights and SSRF-safe import of OTA calendars that holds inventory and flags clashes
+- **Revenue tools**: automatic pricing by occupancy, lead time and weekday with floors/ceilings and previews; 30-night revenue grid with pickup; honest scarcity nudge
+- **Front office**: tape chart (drag to move/extend), night audit with daily owner report, cash drawer shifts
+- **Security**: two-step sign-in with recovery codes and per-hotel policy, device sessions, shared-device PIN sign-in, console IP allow-list
 - **Privacy (DPDP Act)**: guest data export and erasure, with financial records kept pseudonymised
 
 ## Run locally

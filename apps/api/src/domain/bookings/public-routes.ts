@@ -10,6 +10,7 @@ import { idempotent } from '../../lib/idempotency.js';
 import { enabledMethods, getSettings, instructionsFor, submitUtr, gatewayCreds, capture } from '../payments/service.js';
 import { GATEWAYS } from '../payments/gateways/index.js';
 import { availableUnits } from './inventory.js';
+import { revenueSettings } from '../revenue/routes.js';
 import { checkPayToken, payToken } from './pay-token.js';
 import { createBooking, priceStay } from './service.js';
 
@@ -30,6 +31,7 @@ export const publicBookingRoutes: Routes = async (app) => {
       const [prop] = await tx.select().from(properties).where(eq(properties.tenantId, t.id)).limit(1);
       if (!prop) throw notFound('Property');
       const units = await availableUnits(tx, prop.id, q.checkIn, q.checkOut);
+      const { scarcityThreshold } = await revenueSettings(tx, t.id);
       const types = await tx.select().from(roomTypes).where(and(eq(roomTypes.propertyId, prop.id), eq(roomTypes.active, true))).orderBy(asc(roomTypes.sort));
       const plans = await tx.select().from(ratePlans).where(and(eq(ratePlans.tenantId, t.id), eq(ratePlans.active, true)));
       const results = [];
@@ -49,7 +51,7 @@ export const publicBookingRoutes: Routes = async (app) => {
         }
         results.push({
           roomType: { id: rt.id, name: rt.name, slug: rt.slug, description: rt.description, images: rt.images, amenities: rt.amenities, bedConfig: rt.bedConfig, sizeSqm: rt.sizeSqm, view: rt.view, maxOccupancy: rt.maxOccupancy },
-          available: rates.some((r) => 'quote' in r), unitsLeft: u && u.units <= 3 ? u.units : null, fitsParty: fits,
+          available: rates.some((r) => 'quote' in r), unitsLeft: u && scarcityThreshold > 0 && u.units <= scarcityThreshold ? u.units : null, fitsParty: fits,
           minStay: u?.minStay || null, rates: rates.sort((a, b) => ('quote' in a && 'quote' in b ? a.quote!.total - b.quote!.total : 0)),
         });
       }

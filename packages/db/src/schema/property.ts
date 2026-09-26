@@ -56,6 +56,9 @@ export const roomTypes = pgTable(
     images: jsonb('images').$type<ImageRef[]>().notNull().default([]),
     sort: integer('sort').notNull().default(0),
     active: boolean('active').notNull().default(true),
+    /** Guardrails for automatic pricing: rules never take the nightly rate below/above these (minor units). */
+    priceFloor: integer('price_floor'),
+    priceCeiling: integer('price_ceiling'),
     createdAt: createdAt(),
   },
   (t) => [
@@ -249,3 +252,22 @@ export const externalBlocks = pgTable(
   },
   (t) => [uniqueIndex('external_blocks_feed_uid_uq').on(t.feedId, t.uid)],
 );
+
+/**
+ * Automatic pricing: adjust nightly rates by occupancy, booking lead time or day of week.
+ * Matching rules multiply; the result is clamped to the room type's floor and ceiling.
+ */
+export const pricingRules = pgTable('pricing_rules', {
+  id: id(),
+  tenantId: tenantId(),
+  /** null = every room type */
+  roomTypeId: uuid('room_type_id').references(() => roomTypes.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  kind: text('kind', { enum: ['occupancy', 'lead_time', 'day_of_week'] }).notNull(),
+  /** occupancy: { minOccupancyPct } · lead_time: { minDays?, maxDays? } · day_of_week: { days: 0-6 } */
+  params: jsonb('params').$type<{ minOccupancyPct?: number; minDays?: number; maxDays?: number; days?: number[] }>().notNull(),
+  /** Percentage change, e.g. 15 = +15 %, -10 = 10 % off. */
+  adjustPct: integer('adjust_pct').notNull(),
+  active: boolean('active').notNull().default(true),
+  createdAt: createdAt(),
+});
