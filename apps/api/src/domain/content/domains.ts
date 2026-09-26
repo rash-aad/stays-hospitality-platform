@@ -7,7 +7,7 @@ import { randomToken } from '../../lib/ids.js';
 import { invalidateHost } from '../tenants/tenant-cache.js';
 
 const HOST_RE = /^(?=.{4,253}$)(?!-)([a-z0-9-]{1,63}(?<!-)\.)+[a-z]{2,63}$/;
-export const TXT_PREFIX = '_stays-verify';
+export const TXT_PREFIX = '_bookez-verify';
 
 let txtLookup: (name: string) => Promise<string[][]> = resolveTxt;
 /** Test seam for DNS. */

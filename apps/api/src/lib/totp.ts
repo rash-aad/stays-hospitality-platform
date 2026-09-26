@@ -53,7 +53,7 @@ export function verifyTotp(secret: string, code: string, at = Date.now()): numbe
   return null;
 }
 
-export function otpauthUrl(secret: string, account: string, issuer = 'Stays') {
+export function otpauthUrl(secret: string, account: string, issuer = 'bookEZ') {
   return `otpauth://totp/${encodeURIComponent(`${issuer}:${account}`)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=${TOTP_STEP_SECONDS}`;
 }
 

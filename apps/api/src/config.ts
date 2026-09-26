@@ -12,7 +12,7 @@ const schema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: z.coerce.number().default(1025),
-  MAIL_FROM: z.string().default('Stays <no-reply@stays.local>'),
+  MAIL_FROM: z.string().default('bookEZ <no-reply@bookez.in>'),
   UPLOAD_DIR: z.string().default('./uploads'),
   PLATFORM_ROOT_DOMAIN: z.string().default('localhost'),
   LOG_LEVEL: z.string().default('info'),

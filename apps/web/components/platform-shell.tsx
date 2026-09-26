@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { api, refreshSession, signOut } from '@/lib/api';
 import { ToastProvider, cx } from './ui';
 import { MfaGate } from './mfa';
+import { Logo } from './brand';
 
 export function PlatformShell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -25,7 +26,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
     <ToastProvider>
       <div className="min-h-dvh">
         <header className="flex h-12 items-center gap-6 border-b border-line bg-ink px-6 text-white">
-          <span className="font-serif text-lg">Stays <span className="text-white/60">Platform</span></span>
+          <Logo size="sm" tone="light" suffix="Console" />
           <nav className="flex gap-4 text-[13px]"><Link href="/platform" className={cx(path === '/platform' ? 'text-white' : 'text-white/60 hover:text-white')}>Tenants</Link></nav>
           <Link href="/platform/account" className="ml-auto text-[13px] text-white/70 hover:text-white">{me.user.name}</Link>
           <button className="text-[13px] text-white/70 hover:text-white" onClick={async () => { await signOut('staff'); router.replace('/platform/login'); }}>Sign out</button>

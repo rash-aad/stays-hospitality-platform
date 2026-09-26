@@ -2,7 +2,7 @@
  * Demo seed: two realistic tenants and a platform admin. Runs through the real domain services so
  * every record is consistent (inventory ledger, folios, invoices, events).
  *
- *   Platform admin      admin@stays.local            Stays!Admin2026
+ *   Platform admin      admin@bookez.in            Bookez!Admin2026
  *   Seabreeze (resort)  owner@seabreeze.example      Seabreeze!2026   → http://seabreeze.localhost:3000
  *   Printworks (city)   owner@printworks.example     Printworks!2026  → http://printworks.localhost:3000
  *   Every other staff account uses the password     Staff!2026
@@ -339,13 +339,13 @@ async function seedPrintworks() {
 await asSystem(async (tx) => {
   const { syncPermissions } = await import('./domain/tenants/provision.js');
   await syncPermissions(tx);
-  await tx.insert(s.users).values({ tenantId: null, name: 'Platform Admin', email: 'admin@stays.local', passwordHash: await hashPassword('Stays!Admin2026'), isPlatformAdmin: true, emailVerifiedAt: new Date() });
+  await tx.insert(s.users).values({ tenantId: null, name: 'Platform Admin', email: 'admin@bookez.in', passwordHash: await hashPassword('Bookez!Admin2026'), isPlatformAdmin: true, emailVerifiedAt: new Date() });
 });
 const seabreezeId = await seedSeabreeze();
 await seedPrintworks();
 await invalidateTenant(seabreezeId);
 await asSystem((tx) => tx.update(s.notifications).set({ status: 'sent', sentAt: new Date() }).where(eq(s.notifications.status, 'queued')));
-console.log('✓ Platform admin — admin@stays.local / Stays!Admin2026');
+console.log('✓ Platform admin — admin@bookez.in / Bookez!Admin2026');
 await closeRedis();
 await closeDb();
 process.exit(0);

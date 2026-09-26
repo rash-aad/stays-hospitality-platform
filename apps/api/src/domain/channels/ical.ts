@@ -59,9 +59,9 @@ export async function buildExport(tx: Tx, roomTypeId: string, name: string, toda
   }
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
   const body = ranges.flatMap(([s, e]) => [
-    'BEGIN:VEVENT', `UID:${compact(s)}-${roomTypeId}@stays`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${compact(s)}`, `DTEND;VALUE=DATE:${compact(e)}`, 'SUMMARY:Not available', 'END:VEVENT',
+    'BEGIN:VEVENT', `UID:${compact(s)}-${roomTypeId}@bookez.in`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${compact(s)}`, `DTEND;VALUE=DATE:${compact(e)}`, 'SUMMARY:Not available', 'END:VEVENT',
   ]);
-  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Stays//Availability//EN', `X-WR-CALNAME:${esc(name)}`, 'CALSCALE:GREGORIAN', ...body, 'END:VCALENDAR', ''].join('\r\n');
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//bookEZ//Availability//EN', `X-WR-CALNAME:${esc(name)}`, 'CALSCALE:GREGORIAN', ...body, 'END:VCALENDAR', ''].join('\r\n');
 }
 
 // ---------------------------------------------------------------- safe fetch
@@ -87,7 +87,7 @@ export function safeFetchText(url: string, maxBytes = 2_000_000, timeoutMs = 10_
   if (u.protocol !== 'https:') return Promise.reject(new Error('Calendar URL must use https'));
   return new Promise((resolve, reject) => {
     const req = request(u, {
-      method: 'GET', timeout: timeoutMs, headers: { accept: 'text/calendar', 'user-agent': 'Stays-iCal/1.0' },
+      method: 'GET', timeout: timeoutMs, headers: { accept: 'text/calendar', 'user-agent': 'bookEZ-iCal/1.0 (+https://bookez.in)' },
       lookup: (host, opts, cb) => lookup(host, { ...opts, all: false }, (err, address, family) => {
         if (err) return cb(err, '', 0);
         if (!isPublicAddress(address as string)) return cb(new Error('Calendar host resolves to a private address'), '', 0);

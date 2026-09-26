@@ -154,8 +154,8 @@ test('platform admin onboards a property whose site is live, then suspends it', 
   await p.goto(`${PLATFORM}/`, { waitUntil: 'domcontentloaded' });
   await p.waitForURL(/\/platform\/login$/);
   await expect(p.getByRole('button', { name: 'Sign in' })).toBeEnabled();
-  await p.getByLabel('Email').fill('admin@stays.local');
-  await p.getByLabel('Password').fill('Stays!Admin2026');
+  await p.getByLabel('Email').fill('admin@bookez.in');
+  await p.getByLabel('Password').fill('Bookez!Admin2026');
   await p.getByRole('button', { name: 'Sign in' }).click();
   await p.waitForURL(/\/platform$/);
   const slug = `hills${Date.now().toString(36)}`;
@@ -203,8 +203,8 @@ test('the Super Admin console lives only on its own origin and admits only platf
   // And the hotel admin sign-in points platform admins to the console.
   await p.goto(`${ADMIN}/admin/login`, { waitUntil: 'domcontentloaded' });
   await expect(p.getByRole('button', { name: 'Sign in' })).toBeEnabled();
-  await p.getByLabel('Email').fill('admin@stays.local');
-  await p.getByLabel('Password').fill('Stays!Admin2026');
+  await p.getByLabel('Email').fill('admin@bookez.in');
+  await p.getByLabel('Password').fill('Bookez!Admin2026');
   await p.getByRole('button', { name: 'Sign in' }).click();
   await expect(p.getByText(`Platform administrators sign in at ${PLATFORM}`)).toBeVisible();
   await ctx.close();

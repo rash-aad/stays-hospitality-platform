@@ -1,4 +1,6 @@
-# Stays — hospitality CRM, direct booking & guest experience platform
+# bookEZ — hotel software for direct bookings, operations and guest experience
+
+**bookez.in** · Multi-tenant platform for hotels, resorts and homestays in India.
 
 Multi-tenant platform for hotels, resorts and villas: a tenant CRM and operations workspace, a branded website with a visual builder (10 templates), direct room booking with UPI payments, restaurant reservations and ordering, and one mobile-first guest portal (PWA) for the whole stay.
 

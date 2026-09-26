@@ -1,11 +1,11 @@
 {
-  "name": "Stays Admin",
-  "short_name": "Stays",
+  "name": "bookEZ Admin",
+  "short_name": "bookEZ",
   "start_url": "/admin",
   "scope": "/admin",
   "display": "standalone",
   "background_color": "#f6f5f2",
-  "theme_color": "#1b1a17",
+  "theme_color": "#0e5a57",
   "icons": [
     { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "/icons/maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }

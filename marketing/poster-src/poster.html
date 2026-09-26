@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Stays — poster</title>
+<title>bookEZ — poster</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=Inter+Tight:wght@400;500;600&display=swap">
@@ -20,18 +20,19 @@
   .serif { font-family: "Newsreader", Georgia, serif; }
 
   /* ---------- masthead ---------- */
-  header { display: flex; justify-content: space-between; align-items: baseline; padding: 58px 72px 0; }
-  .mark { font-family: "Newsreader", serif; font-size: 34px; letter-spacing: -0.01em; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 46px 72px 0; }
+  .mark { display: inline-flex; align-items: center; gap: 12px; font-family: "Inter Tight", sans-serif; font-weight: 600; font-size: 34px; letter-spacing: -0.02em; }
+  .mark b { font-weight: 600; color: var(--accent); }
   .kicker { font-size: 12.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
 
   /* ---------- headline ---------- */
-  .lede { padding: 36px 72px 0; }
+  .lede { padding: 30px 72px 0; }
   h1 { font-family: "Newsreader", serif; font-weight: 400; font-size: 94px; line-height: 0.95; letter-spacing: -0.025em; }
   h1 em { font-style: italic; color: var(--accent); }
   .sub { margin-top: 22px; max-width: 690px; font-size: 21px; line-height: 1.45; color: var(--ink-2); }
 
   /* ---------- product composition ---------- */
-  .stage { position: relative; margin: 38px 72px 0; height: 412px; }
+  .stage { position: relative; margin: 30px 72px 0; height: 412px; }
   .browser { position: absolute; left: 0; top: 0; width: 820px; border-radius: 6px; overflow: hidden; background: #fff;
              box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 30px 60px -28px rgba(22,19,15,.45); }
   .browser .bar { height: 26px; background: #e9e3d8; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-bottom: 1px solid #dcd4c6; }
@@ -44,7 +45,7 @@
   .caption { position: absolute; font-size: 12px; color: var(--muted); letter-spacing: .02em; }
 
   /* ---------- features ---------- */
-  .features { margin: 42px 72px 0; border-top: 1px solid var(--ink); display: grid; grid-template-columns: 1fr 1fr; }
+  .features { margin: 30px 72px 0; border-top: 1px solid var(--ink); display: grid; grid-template-columns: 1fr 1fr; }
   .f { padding: 22px 0 22px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 54px 1fr; column-gap: 8px; }
   .f:nth-child(odd) { padding-right: 36px; border-right: 1px solid var(--line); }
   .f:nth-child(even) { padding-left: 36px; }
@@ -67,7 +68,7 @@
 <body>
 <div class="poster">
   <header>
-    <span class="mark">Stays</span>
+    <span class="mark"><svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#0e5a57"/><circle cx="22" cy="32" r="9" fill="none" stroke="#fff" stroke-width="6"/><path d="M30 29h22v6H47v9h-6v-9h-3v6h-5v-6h-3z" fill="#fff"/></svg><span>book<b>EZ</b></span></span>
     <span class="kicker">The operating system for hotels &amp; resorts</span>
   </header>
 
@@ -79,7 +80,7 @@
   <section class="stage">
     <div class="browser">
       <div class="bar"><i></i><i></i><i></i><span>www.yourhotel.in</span></div>
-      <img src="c_site.png" alt="A Stays property website">
+      <img src="c_site.png" alt="A bookEZ property website">
     </div>
     <div class="phone"><img src="c_app.png" alt="The guest app"></div>
   </section>
@@ -124,7 +125,7 @@
     </div>
     <div class="right">
       <span class="btn">Book a demo</span>
-      <p class="url">github.com/rash-aad/stays-hospitality-platform</p>
+      <p class="url">bookez.in</p>
     </div>
   </footer>
 </div>

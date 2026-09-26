@@ -1,5 +1,5 @@
 {
-  "name": "hospitality-platform",
+  "name": "bookez",
   "private": true,
   "workspaces": ["packages/*", "apps/*"],
   "scripts": {

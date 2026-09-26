@@ -1,4 +1,4 @@
-/* Stays service worker — app shell caching, offline fallback for the stay & guide, and web push. */
+/* bookEZ service worker — app shell caching, offline fallback for the stay & guide, and web push. */
 const VERSION = 'v1';
 const SHELL = `shell-${VERSION}`;
 const DATA = `data-${VERSION}`;

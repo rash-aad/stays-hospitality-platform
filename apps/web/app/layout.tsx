@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Stays — hospitality platform', template: '%s' },
+  title: { default: 'bookEZ — hotel software for direct bookings', template: '%s' },
   description: 'Direct booking, guest experience and operations for hotels and resorts.',
 };
 

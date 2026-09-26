@@ -1,10 +1,11 @@
 import Link from 'next/link';
+import { Logo } from '@/components/brand';
 
 export default function Landing() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-5xl flex-col px-6 py-10">
       <header className="flex items-center justify-between">
-        <span className="font-serif text-2xl tracking-tight">Stays</span>
+        <Logo size="lg" />
         <nav className="flex gap-2">
           <Link className="btn" href="/admin/login">Sign in</Link>
         </nav>

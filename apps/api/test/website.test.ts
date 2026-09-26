@@ -81,7 +81,7 @@ describe('domain resolution', () => {
 
     setTxtResolver(async () => [['stays-verify=wrong']]);
     expect((await app.inject({ method: 'POST', url: `/api/v1/admin/domains/${d.id}/verify`, headers: t.auth })).statusCode).toBe(409);
-    setTxtResolver(async (name) => (name === `_stays-verify.${host}` ? [[d.txtRecord.value]] : []));
+    setTxtResolver(async (name) => (name === `_bookez-verify.${host}` ? [[d.txtRecord.value]] : []));
     expect((await app.inject({ method: 'POST', url: `/api/v1/admin/domains/${d.id}/verify`, headers: t.auth })).statusCode).toBe(200);
     expect(await resolveHost(host, 'localhost')).toBe(t.tenant.id);
 

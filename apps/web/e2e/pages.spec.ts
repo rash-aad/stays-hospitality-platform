@@ -52,8 +52,8 @@ test('platform console opens cleanly', async ({ browser }) => {
   const problems = watch(page);
   await page.goto(`${PLATFORM}/platform/login`, { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeEnabled();
-  await page.getByLabel('Email').fill('admin@stays.local');
-  await page.getByLabel('Password').fill('Stays!Admin2026');
+  await page.getByLabel('Email').fill('admin@bookez.in');
+  await page.getByLabel('Password').fill('Bookez!Admin2026');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL(/\/platform$/);
   await sweep(page, PLATFORM, ['/platform', '/platform/account'], 'platform', problems);

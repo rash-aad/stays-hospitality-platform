@@ -5,6 +5,7 @@ import { setAccessToken, signOut, staffApi } from '@/lib/api';
 import { dateTime } from '@/lib/format';
 import { useStaff } from '@/lib/hooks';
 import { Field, Modal, Section, useAction } from './ui';
+import { Logo } from './brand';
 
 type Status = { enabled: boolean; enabledAt: string | null; required: boolean; recoveryCodesLeft: number };
 type Sess = { id: string; userAgent: string | null; ip: string | null; lastActiveAt: string; sharedDevice: boolean; current: boolean };
@@ -33,7 +34,7 @@ export function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () =
       <pre className="grid grid-cols-2 gap-x-6 gap-y-1 rounded-sm bg-sunk p-3 font-mono text-[13px]">{codes.map((c) => <span key={c}>{c}</span>)}</pre>
       <div className="flex gap-2">
         <button type="button" className="btn btn-sm" onClick={() => navigator.clipboard?.writeText(text)}>Copy</button>
-        <a className="btn btn-sm" download="stays-recovery-codes.txt" href={`data:text/plain;charset=utf-8,${encodeURIComponent(text)}`}>Download</a>
+        <a className="btn btn-sm" download="bookez-recovery-codes.txt" href={`data:text/plain;charset=utf-8,${encodeURIComponent(text)}`}>Download</a>
         <button type="button" className="btn btn-sm btn-primary ml-auto" onClick={onDone}>I’ve saved them</button>
       </div>
     </div>
@@ -79,7 +80,7 @@ export function MfaGate({ enrolled, onDone, loginPath }: { enrolled: boolean; on
   return (
     <main className="grid min-h-dvh place-items-center bg-canvas px-4 py-10">
       <div className="w-full max-w-[420px] space-y-4" data-testid="mfa-gate">
-        <p className="font-serif text-2xl tracking-tight">Stays</p>
+        <p><Logo /></p>
         <h1 className="text-lg font-semibold">{enrolled ? 'Confirm it’s you' : 'Set up two-step sign-in'}</h1>
         <p className="text-[13px] text-muted">{enrolled ? 'Your organisation now requires a second step. Enter a code from your authenticator app.' : 'Your organisation requires two-step sign-in for this account. It takes a minute.'}</p>
         {enrolled ? (

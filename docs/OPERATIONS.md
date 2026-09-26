@@ -1,4 +1,6 @@
-# Deploying and operating
+# Deploying and operating bookEZ
+
+Production layout on **bookez.in**: `bookez.in` (marketing), `app.bookez.in` (hotel staff admin, `APP_HOSTS`), `<property>.bookez.in` (each property's website and guest app, `PLATFORM_ROOT_DOMAIN=bookez.in`), custom domains per property, and `console.bookez.in` (Super Admin, `CONSOLE_HOST`).
 
 ## Production topology
 
@@ -15,7 +17,7 @@
 
 ## Custom domains and TLS
 
-Tenants add a domain in **Website → Domains** and create a TXT record `_stays-verify.<host>` plus a CNAME to your edge. Only **verified** domains resolve to a tenant. Caddy's on-demand TLS issues certificates as traffic arrives; restrict issuance with its `ask` hook to verified hostnames.
+Tenants add a domain in **Website → Domains** and create a TXT record `_bookez-verify.<host>` plus a CNAME to your edge. Only **verified** domains resolve to a tenant. Caddy's on-demand TLS issues certificates as traffic arrives; restrict issuance with its `ask` hook to verified hostnames.
 
 ## Backups and recovery
 
@@ -61,7 +63,7 @@ Guests can download their data or erase it from the portal (**More → Your data
 The platform console (`/platform`) is served only on `PLATFORM_HOST`; every other host answers 404 for it, and the console origin exposes nothing but the console and its `/api/v1/auth` + `/api/v1/platform` endpoints. Platform sessions use their own refresh cookie, so a hotel login in the same browser never replaces them.
 
 - **Development:** `npm run dev:platform` serves it on http://localhost:3001 (`apps/web/.env.local`: `PLATFORM_HOST=localhost:3001`, `NEXT_PUBLIC_PLATFORM_URL=http://localhost:3001`).
-- **Production:** set `CONSOLE_HOST=console.example.com` for `deploy/docker-compose.prod.yml`; Caddy gives it its own certificate. Consider restricting it further by IP allow-list in the Caddyfile.
+- **Production:** set `CONSOLE_HOST=console.bookez.in` for `deploy/docker-compose.prod.yml`; Caddy gives it its own certificate. Consider restricting it further by IP allow-list in the Caddyfile.
 
 ## Two-step sign-in and sessions
 
