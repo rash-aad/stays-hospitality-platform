@@ -12,6 +12,7 @@ export type JobName =
   | 'daily-report'
   | 'subscriptions'
   | 'campaign-send'
+  | 'channel-sync'
   | 'ical-sync';
 
 let queue: Queue | null = null;
@@ -37,6 +38,7 @@ export async function scheduleRepeating() {
   await queue.upsertJobScheduler('ical-sync', { every: 30 * 60_000 }, { name: 'ical-sync', data: {} });
   await queue.upsertJobScheduler('daily-report', { every: 60 * 60_000 }, { name: 'daily-report', data: {} });
   await queue.upsertJobScheduler('subscriptions', { every: 60 * 60_000 }, { name: 'subscriptions', data: {} });
+  await queue.upsertJobScheduler('channel-sync', { every: 5 * 60_000 }, { name: 'channel-sync', data: {} });
   await queue.upsertJobScheduler('generate-housekeeping', { pattern: '0 30 0 * * *' }, { name: 'generate-housekeeping', data: {} });
 }
 

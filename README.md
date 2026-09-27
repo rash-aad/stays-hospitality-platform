@@ -32,7 +32,8 @@ Multi-tenant platform for hotels, resorts and villas: a tenant CRM and operation
 - **GST tax invoices**: GSTIN checksum validation, SAC codes, CGST/SGST split, financial-year numbering, company bill-to; issued invoices are frozen
 - **Guest journey automation**: pre-arrival email with online check-in, experience and table reminders, waitlist promotion notices, post-stay feedback with NPS and staff replies
 - **Self-service**: guests change dates (priced first, then committed) and complete online check-in (only the last 4 ID characters stored)
-- **Channel sync**: iCal export of sold-out nights and SSRF-safe import of OTA calendars that holds inventory and flags clashes
+- **Channel manager**: two-way sync through Channex (rooms left, rule-adjusted rates, stop-sell, min stay pushed as deltas; OTA bookings pulled, acknowledged only once recorded; overbookings recorded and flagged) plus a built-in test provider
+- **Channel sync (iCal)**: export of sold-out nights and SSRF-safe import of OTA calendars that holds inventory and flags clashes
 - **bookEZ subscriptions**: per-property monthly/yearly price and free days set by the super admin; owners pay by UPI QR and submit the UTR; manual verification queue with a 12-hour target; GST tax invoices (CGST/SGST or IGST) numbered per financial year; reminders, grace period, suspension and instant reactivation
 - **Loyalty & CRM**: points on stays with tiers, redeemable in the guest app and returned on cancellation; opt-in email campaigns with segments and one-click unsubscribe; one-time public review invitations after 4★+ feedback
 - **Revenue tools**: automatic pricing by occupancy, lead time and weekday with floors/ceilings and previews; 30-night revenue grid with pickup; honest scarcity nudge

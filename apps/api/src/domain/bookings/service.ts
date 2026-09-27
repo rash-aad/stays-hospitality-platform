@@ -100,13 +100,16 @@ export async function createBooking(
     arrivalTime?: string | null;
     source: Booking['source'];
     createdByUserId?: string | null;
+    /** Received from a channel manager: the OTA already sold it, so rules don't apply and it's recorded even if we're full. */
+    channel?: { ref: string; name: string; total: number | null };
   },
 ): Promise<{ booking: Booking; quote: Quote; instructions: Instructions | null }> {
   const isStaff = !!input.createdByUserId;
-  const { quote, roomType, plan, property, coupon } = await priceStay(tx, tenant, input, { enforceLeadTime: !isStaff });
+  const fromChannel = !!input.channel;
+  const { quote, roomType, plan, property, coupon } = await priceStay(tx, tenant, input, { enforceLeadTime: !isStaff && !fromChannel, ignoreStayRules: fromChannel });
   if (input.couponCode && quote.couponError) throw badRequest(quote.couponError);
   const settings = await getSettings(tx, tenant.id);
-  const allowed = isStaff ? (['pay_at_property', ...enabledMethods(tenant, settings, 'booking')] as PaymentMethod[]) : enabledMethods(tenant, settings, 'booking');
+  const allowed = isStaff || fromChannel ? (['pay_at_property', ...enabledMethods(tenant, settings, 'booking')] as PaymentMethod[]) : enabledMethods(tenant, settings, 'booking');
   if (!allowed.includes(input.paymentMethod)) throw badRequest('This payment method is not available', { allowed });
 
   const guest = 'guestId' in input.guest
@@ -114,7 +117,14 @@ export async function createBooking(
     : await upsertGuest(tx, tenant.id, input.guest);
   if (!guest) throw notFound('Guest');
 
-  await reserveInventory(tx, tenant.id, roomType.id, input.checkIn, input.checkOut);
+  let overbooked = false;
+  try {
+    await reserveInventory(tx, tenant.id, roomType.id, input.checkIn, input.checkOut, { skipRestrictions: fromChannel });
+  } catch (e) {
+    // An OTA booking for a room we no longer have still happened: record it and flag it for the desk.
+    if (!fromChannel || !(e instanceof AppError) || e.status !== 409) throw e;
+    overbooked = true;
+  }
   if (coupon) {
     const [ok] = await tx
       .update(coupons)
@@ -131,6 +141,7 @@ export async function createBooking(
     checkIn: input.checkIn, checkOut: input.checkOut, adults: input.adults, children: input.children, source: input.source,
     currency: tenant.currency, subtotal: quote.subtotal, discount: quote.discount, taxTotal: quote.taxTotal, total: quote.total,
     couponId: coupon?.id ?? null, specialRequests: input.specialRequests, arrivalTime: input.arrivalTime, createdByUserId: input.createdByUserId ?? null,
+    channelRef: input.channel?.ref ?? null, channelName: input.channel?.name ?? null, channelTotal: input.channel?.total ?? null, channelIssue: overbooked ? 'overbooked' : null,
   }).returning();
   const roomTax = quote.taxTotal - quote.addOns.reduce((s, a) => s + a.taxAmount, 0);
   await tx.insert(bookingItems).values([
@@ -156,7 +167,8 @@ export async function createBooking(
       vars: { name: guest.firstName, reference: booking!.reference, total: formatMoney(quote.total, tenant.currency), holdUntil: r.payment.expiresAt?.toLocaleString('en-IN', { timeZone: tenant.timezone }), vpa: settings.upiVpa ?? '', link: `${await siteUrl(tx, tenant.id)}/book/pay/${booking!.id}?token=${payToken(booking!.id)}` },
       related: { type: 'booking', id: booking!.id },
     });
-  } else {
+  } else if (!guest.email.endsWith('.invalid')) {
+    // Channel bookings without a real email (placeholder) get no confirmation from us; the OTA sent theirs.
     await onConfirmed(tx, tenant, final);
   }
   return { booking: final, quote, instructions };

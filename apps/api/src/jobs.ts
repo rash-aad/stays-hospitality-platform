@@ -12,6 +12,7 @@ import { syncAllFeeds } from './domain/channels/routes.js';
 import { sendDueDailyReports } from './domain/operations/report.js';
 import { subscriptionSweep } from './domain/subscriptions/service.js';
 import { sendCampaign } from './domain/marketing/campaigns.js';
+import { syncAllChannels } from './domain/channel-manager/service.js';
 import { withTenant } from './infra/db.js';
 import { properties, tenantModules, tenants } from '@hp/db';
 import { and, eq } from 'drizzle-orm';
@@ -33,6 +34,7 @@ export async function startJobs(config: Config) {
     'ical-sync': () => syncAllFeeds(),
     'daily-report': () => sendDueDailyReports(),
     subscriptions: () => subscriptionSweep(),
+    'channel-sync': () => syncAllChannels(),
     'campaign-send': async (job) => {
       const { tenantId, campaignId } = job.data as { tenantId: string; campaignId: string };
       const n = await withTenant(tenantId, (tx) => sendCampaign(tx, tenantId, campaignId));

@@ -49,6 +49,7 @@ const NAV: { group: string; items: Item[] }[] = [
     { href: '/admin/settings/subscription', label: 'Subscription', perm: 'tenant.settings' },
     { href: '/admin/settings/billing', label: 'Billing & GST', perm: 'tenant.settings' },
     { href: '/admin/settings/loyalty', label: 'Loyalty & reviews', perm: 'tenant.settings' },
+    { href: '/admin/settings/channel-manager', label: 'Channel manager', perm: 'bookings.read', mod: 'room_booking' },
     { href: '/admin/settings/channels', label: 'Channels (iCal)', perm: 'bookings.read', mod: 'room_booking' },
     { href: '/admin/settings/modules', label: 'Modules', perm: 'tenant.settings' },
     { href: '/admin/settings/staff', label: 'Staff & roles', perm: 'staff.manage' },

@@ -64,6 +64,13 @@
       "when": 1790431452614,
       "tag": "0008_loyalty_campaigns",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790500719293,
+      "tag": "0009_channel_manager",
+      "breakpoints": true
     }
   ]
 }

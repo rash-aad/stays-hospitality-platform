@@ -271,3 +271,66 @@ export const pricingRules = pgTable('pricing_rules', {
   active: boolean('active').notNull().default(true),
   createdAt: createdAt(),
 });
+
+/** A connection to a channel manager (Channex, or the built-in test provider). */
+export const channelConnections = pgTable(
+  'channel_connections',
+  {
+    id: id(),
+    tenantId: tenantId(),
+    provider: text('provider', { enum: ['mock', 'channex'] }).notNull(),
+    status: text('status', { enum: ['active', 'paused'] }).notNull().default('active'),
+    environment: text('environment', { enum: ['staging', 'production'] }).notNull().default('staging'),
+    externalPropertyId: text('external_property_id').notNull(),
+    /** API key, encrypted with SECRETS_MASTER_KEY. */
+    apiKeyEnc: text('api_key_enc'),
+    horizonDays: integer('horizon_days').notNull().default(365),
+    lastPushAt: ts('last_push_at'),
+    lastPullAt: ts('last_pull_at'),
+    lastError: text('last_error'),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('channel_connections_tenant_provider_uq').on(t.tenantId, t.provider)],
+);
+
+/** Which bookEZ rate plan (and its room type) is which listing on the channel manager. */
+export const channelMappings = pgTable(
+  'channel_mappings',
+  {
+    id: id(),
+    tenantId: tenantId(),
+    connectionId: uuid('connection_id').notNull().references(() => channelConnections.id, { onDelete: 'cascade' }),
+    ratePlanId: uuid('rate_plan_id').notNull().references(() => ratePlans.id, { onDelete: 'cascade' }),
+    roomTypeId: uuid('room_type_id').notNull().references(() => roomTypes.id, { onDelete: 'cascade' }),
+    externalRoomTypeId: text('external_room_type_id').notNull(),
+    externalRatePlanId: text('external_rate_plan_id').notNull(),
+  },
+  (t) => [uniqueIndex('channel_mappings_plan_uq').on(t.connectionId, t.ratePlanId), uniqueIndex('channel_mappings_ext_uq').on(t.connectionId, t.externalRatePlanId)],
+);
+
+/** Last values pushed per listing and night, so only changes are sent. */
+export const channelAriState = pgTable(
+  'channel_ari_state',
+  {
+    tenantId: tenantId(),
+    connectionId: uuid('connection_id').notNull().references(() => channelConnections.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    date: date('date').notNull(),
+    value: text('value').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.connectionId, t.key, t.date] })],
+);
+
+export const channelSyncLog = pgTable(
+  'channel_sync_log',
+  {
+    id: id(),
+    tenantId: tenantId(),
+    connectionId: uuid('connection_id').notNull().references(() => channelConnections.id, { onDelete: 'cascade' }),
+    direction: text('direction', { enum: ['push', 'pull', 'test'] }).notNull(),
+    ok: boolean('ok').notNull(),
+    summary: text('summary').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('channel_sync_log_conn_idx').on(t.connectionId, t.createdAt)],
+);

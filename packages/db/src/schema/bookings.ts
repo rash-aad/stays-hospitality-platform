@@ -38,6 +38,13 @@ export const bookings = pgTable(
     arrivalTime: text('arrival_time'),
     holdExpiresAt: ts('hold_expires_at'),
     cancelledAt: ts('cancelled_at'),
+    /** Booking made on an OTA and received through the channel manager. */
+    channelRef: text('channel_ref'),
+    channelName: text('channel_name'),
+    /** What the OTA says the guest pays (may differ from our own rates). */
+    channelTotal: integer('channel_total'),
+    /** Something the front desk must resolve, e.g. the OTA sold a room we no longer had. */
+    channelIssue: text('channel_issue', { enum: ['overbooked', 'modification_failed'] }),
     cancellationReason: text('cancellation_reason'),
     cancellationFee: integer('cancellation_fee'),
     createdByUserId: uuid('created_by_user_id').references(() => users.id),

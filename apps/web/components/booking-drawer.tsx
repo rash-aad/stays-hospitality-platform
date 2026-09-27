@@ -8,7 +8,7 @@ import { useCan } from './admin-context';
 import { Drawer, Field, Loading, Modal, Section, Status, useAction } from './ui';
 
 type Detail = {
-  booking: { precheckin: null | { arrivalTime: string | null; travellingBy: string | null; nationality: string | null; idType: string | null; idNumberLast4: string | null; idFileId: string | null; address: string | null; purposeOfVisit: string | null; guestNames: string[]; specialRequests: string | null }; precheckinAt: string | null; id: string; reference: string; status: string; paymentStatus: string; checkIn: string; checkOut: string; adults: number; children: number; source: string; currency: string; subtotal: number; discount: number; taxTotal: number; total: number; amountPaid: number; specialRequests: string | null; arrivalTime: string | null; holdExpiresAt: string | null; cancellationFee: number | null; cancellationReason: string | null; createdAt: string };
+  booking: { channelName: string | null; channelRef: string | null; channelTotal: number | null; channelIssue: string | null; precheckin: null | { arrivalTime: string | null; travellingBy: string | null; nationality: string | null; idType: string | null; idNumberLast4: string | null; idFileId: string | null; address: string | null; purposeOfVisit: string | null; guestNames: string[]; specialRequests: string | null }; precheckinAt: string | null; id: string; reference: string; status: string; paymentStatus: string; checkIn: string; checkOut: string; adults: number; children: number; source: string; currency: string; subtotal: number; discount: number; taxTotal: number; total: number; amountPaid: number; specialRequests: string | null; arrivalTime: string | null; holdExpiresAt: string | null; cancellationFee: number | null; cancellationReason: string | null; createdAt: string };
   guest: { id: string; firstName: string; lastName: string; email: string; phone: string | null; country: string | null; notes: string | null; tags: string[] };
   items: { id: string; kind: string; description: string; quantity: number; amount: number; taxAmount: number }[];
   stay: { status: string; roomNumber: string | null } | null;
@@ -103,6 +103,12 @@ export function BookingDrawer({ id, onClose, onChanged, onMove }: { id: string |
               {d.invoice && <a className="btn btn-sm" href={`/admin/invoice/${d.invoice.id}`} target="_blank" rel="noreferrer">Open invoice</a>}
             </div>
           </Section>
+          {b.channelName && (
+            <Section title={`From ${b.channelName}`}>
+              <p className="text-[13px]" data-testid="channel-info">OTA reference <span className="font-mono">{b.channelRef}</span>{b.channelTotal != null && <> · the guest pays {money(b.channelTotal)} on {b.channelName}</>}</p>
+              {b.channelIssue && <p className="mt-2 rounded-sm bg-bad-soft px-3 py-2 text-[13px] text-bad">{b.channelIssue === 'overbooked' ? 'Overbooked: this room type had no room left when the booking arrived. Move a guest on the tape chart.' : 'The channel changed this booking but it couldn’t be applied automatically — update the dates here.'}</p>}
+            </Section>
+          )}
           {b.precheckin && (
             <Section title="Online check-in" actions={<span className="text-xs text-muted">{b.precheckinAt && dateTime(b.precheckinAt)}</span>}>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[13px]" data-testid="precheckin-details">
