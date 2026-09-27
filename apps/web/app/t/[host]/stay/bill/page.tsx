@@ -6,7 +6,7 @@ import { useGuest } from '@/lib/hooks';
 
 type Inv = { id: string; number: string; status: string; lines: { description: string; date?: string; quantity: number; amount: number; taxAmount: number }[]; subtotal: number; taxTotal: number; total: number; amountPaid: number; issuedAt: string | null; createdAt: string };
 type Pay = { id: string; reference: string; method: string; status: string; amount: number; refundedAmount: number; createdAt: string; targetType: string; utr: string | null; rejectionReason: string | null };
-const METHOD: Record<string, string> = { upi_manual: 'UPI', upi_gateway: 'UPI (online)', pay_at_property: 'At the hotel', room_charge: 'Room charge' };
+const METHOD: Record<string, string> = { upi_manual: 'UPI', upi_gateway: 'UPI (online)', pay_at_property: 'At the hotel', room_charge: 'Room charge', loyalty: 'Loyalty points' };
 const STATUS: Record<string, string> = { captured: 'Paid', pending_verification: 'Being verified', awaiting_payment: 'Awaiting payment', rejected: 'Not matched — resubmit', expired: 'Expired', cancelled: 'Cancelled', refunded: 'Refunded', partially_refunded: 'Part refunded' };
 
 export default function Bill() {

@@ -8,6 +8,12 @@ export const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string; 
     subject: '{{subject}}',
     body: '{{message}}\n\nReview it in the console: {{link}}',
   },
+  'marketing.campaign': { subject: '{{subject}}', body: '{{body}}' },
+  'marketing.test': { subject: '[Test] {{subject}}', body: 'This is a test of your campaign.\n\n—\n\n{{body}}' },
+  'review.request': {
+    subject: 'Thank you, {{name}} — would you share it?',
+    body: 'Dear {{name}},\n\nThank you for your kind words about your stay at {{property}}. If you have a minute, a public review helps other travellers find us:\n\n{{links}}\n\nWarm regards,\n{{property}}',
+  },
   'report.daily': {
     subject: '{{property}} — daily report for {{date}}',
     body: 'Daily report for {{date}}\n\n{{body}}\n\nFull figures: Reports → Night audit.',

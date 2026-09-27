@@ -11,6 +11,7 @@ export type JobName =
   | 'reminders'
   | 'daily-report'
   | 'subscriptions'
+  | 'campaign-send'
   | 'ical-sync';
 
 let queue: Queue | null = null;

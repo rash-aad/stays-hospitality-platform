@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, index, jsonb, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { createdAt, id, tenantId, ts } from './_common.js';
 
 export const guests = pgTable(
@@ -27,3 +27,40 @@ export const guests = pgTable(
     index('guests_tenant_name_idx').on(t.tenantId, t.lastName),
   ],
 );
+
+/** Loyalty points: earned on checked-out stays, spent against bookings, returned on cancellation. */
+export const loyaltyLedger = pgTable(
+  'loyalty_ledger',
+  {
+    id: id(),
+    tenantId: tenantId(),
+    guestId: uuid('guest_id').notNull().references(() => guests.id, { onDelete: 'cascade' }),
+    bookingId: uuid('booking_id'),
+    paymentId: uuid('payment_id'),
+    kind: text('kind', { enum: ['earn', 'redeem', 'reverse', 'adjust'] }).notNull(),
+    points: integer('points').notNull(),
+    note: text('note'),
+    createdByUserId: uuid('created_by_user_id'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('loyalty_ledger_guest_idx').on(t.tenantId, t.guestId),
+    // A stay earns once.
+    uniqueIndex('loyalty_ledger_earn_uq').on(t.bookingId).where(sql`${t.kind} = 'earn'`),
+  ],
+);
+
+/** Email campaigns to guests who opted in to marketing. */
+export const campaigns = pgTable('campaigns', {
+  id: id(),
+  tenantId: tenantId(),
+  name: text('name').notNull(),
+  subject: text('subject').notNull(),
+  body: text('body').notNull(),
+  segment: jsonb('segment').$type<{ stayedWithinDays?: number | null; minStays?: number | null; tags?: string[]; country?: string | null }>().notNull().default({}),
+  status: text('status', { enum: ['draft', 'sending', 'sent'] }).notNull().default('draft'),
+  recipients: integer('recipients').notNull().default(0),
+  sentAt: ts('sent_at'),
+  createdByUserId: uuid('created_by_user_id'),
+  createdAt: createdAt(),
+});

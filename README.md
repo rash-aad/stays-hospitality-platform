@@ -34,6 +34,7 @@ Multi-tenant platform for hotels, resorts and villas: a tenant CRM and operation
 - **Self-service**: guests change dates (priced first, then committed) and complete online check-in (only the last 4 ID characters stored)
 - **Channel sync**: iCal export of sold-out nights and SSRF-safe import of OTA calendars that holds inventory and flags clashes
 - **bookEZ subscriptions**: per-property monthly/yearly price and free days set by the super admin; owners pay by UPI QR and submit the UTR; manual verification queue with a 12-hour target; GST tax invoices (CGST/SGST or IGST) numbered per financial year; reminders, grace period, suspension and instant reactivation
+- **Loyalty & CRM**: points on stays with tiers, redeemable in the guest app and returned on cancellation; opt-in email campaigns with segments and one-click unsubscribe; one-time public review invitations after 4★+ feedback
 - **Revenue tools**: automatic pricing by occupancy, lead time and weekday with floors/ceilings and previews; 30-night revenue grid with pickup; honest scarcity nudge
 - **Front office**: tape chart (drag to move/extend), night audit with daily owner report, cash drawer shifts
 - **Security**: two-step sign-in with recovery codes and per-hotel policy, device sessions, shared-device PIN sign-in, console IP allow-list

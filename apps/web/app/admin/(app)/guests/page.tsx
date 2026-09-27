@@ -29,6 +29,7 @@ function GuestDrawer({ id, onClose }: { id: string | null; onClose: () => void }
             <Field label="Tags" hint="Comma separated — e.g. VIP, returning, vegetarian" className="mt-4"><input className="input" defaultValue={d.guest.tags.join(', ')} onChange={(e) => setTags(e.target.value)} /></Field>
             <Field label="Private notes" className="mt-3"><textarea className="input" rows={3} defaultValue={d.guest.notes ?? ''} onChange={(e) => setNotes(e.target.value)} placeholder="Preferences, allergies, occasions" /></Field>
           </Section>
+          <GuestPoints guestId={id!} />
           <Section title={`Stays (${d.bookings.length})`}>
             <ul className="divide-y divide-line text-[13px]">{d.bookings.map((b) => <li key={b.id} className="flex justify-between py-1.5"><a className="hover:underline" href={`/admin/reservations?view=all&id=${b.id}`}>{date(b.checkIn, 'short')} – {date(b.checkOut)} <span className="font-mono text-xs text-muted">{b.reference}</span></a><span className="flex items-center gap-2"><span className="num">{money(b.total)}</span><Status value={b.status} /></span></li>)}</ul>
           </Section>
@@ -73,3 +74,28 @@ function Guests() {
   );
 }
 export default function Page() { return <Suspense><Guests /></Suspense>; }
+
+type Points = { enabled: boolean; balance: number; valuePerPoint: number; nightsLastYear: number; tier: { current: { name: string }; next: { name: string } | null; nightsToNext: number }; ledger: { id: string; kind: string; points: number; note: string | null; createdAt: string }[] };
+
+/** Loyalty balance, tier and history, with a manual adjustment. */
+function GuestPoints({ guestId }: { guestId: string }) {
+  const { data, mutate } = useStaff<{ data: Points }>(`/admin/guests/${guestId}/loyalty`);
+  const can = useCan();
+  const { busy, run } = useAction();
+  const [adj, setAdj] = useState({ points: '', note: '' });
+  const p = data?.data;
+  if (!p?.enabled) return null;
+  return (
+    <Section title="Loyalty">
+      <p className="text-[13px]" data-testid="guest-points"><b className="num">{p.balance}</b> points (≈ {money(p.balance * p.valuePerPoint)}) · {p.tier.current.name}{p.tier.next && <span className="text-muted"> · {p.tier.nightsToNext} nights to {p.tier.next.name}</span>}</p>
+      {p.ledger.length > 0 && <ul className="mt-2 space-y-0.5 text-xs text-muted">{p.ledger.slice(0, 6).map((l) => <li key={l.id}>{dateTime(l.createdAt)} · {l.points > 0 ? '+' : ''}{l.points} · {l.note ?? l.kind}</li>)}</ul>}
+      {can.perm('guests.write') && (
+        <form className="mt-3 flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); run(() => staffApi(`/admin/guests/${guestId}/loyalty/adjust`, { body: { points: Number(adj.points), note: adj.note } }), 'Points adjusted').then((r) => { if (r) { setAdj({ points: '', note: '' }); mutate(); } }); }}>
+          <Field label="Adjust (±)"><input className="input num w-24" type="number" value={adj.points} onChange={(e) => setAdj({ ...adj, points: e.target.value })} /></Field>
+          <Field label="Reason" className="flex-1"><input className="input" value={adj.note} onChange={(e) => setAdj({ ...adj, note: e.target.value })} placeholder="Birthday bonus" /></Field>
+          <button className="btn btn-sm mb-1" disabled={busy || !Number(adj.points) || adj.note.trim().length < 2}>Apply</button>
+        </form>
+      )}
+    </Section>
+  );
+}

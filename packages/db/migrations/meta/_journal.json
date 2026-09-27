@@ -57,6 +57,13 @@
       "when": 1790427864151,
       "tag": "0007_tenant_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790431452614,
+      "tag": "0008_loyalty_campaigns",
+      "breakpoints": true
     }
   ]
 }

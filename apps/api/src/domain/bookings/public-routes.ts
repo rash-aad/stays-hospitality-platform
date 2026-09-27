@@ -78,7 +78,7 @@ export const publicBookingRoutes: Routes = async (app) => {
       tags: ['booking'],
       headers: z.object({ 'idempotency-key': z.string().min(8).max(200) }).passthrough(),
       body: stayBody.extend({
-        guest: z.object({ email: z.string().email(), firstName: z.string().min(1).max(80), lastName: z.string().min(1).max(80), phone: z.string().min(6).max(30), country: z.string().length(2).optional() }),
+        guest: z.object({ email: z.string().email(), firstName: z.string().min(1).max(80), lastName: z.string().min(1).max(80), phone: z.string().min(6).max(30), country: z.string().length(2).optional(), marketingOptIn: z.boolean().optional() }),
         paymentMethod: z.enum(['upi_manual', 'upi_gateway', 'pay_at_property']),
         specialRequests: z.string().max(1000).optional(), arrivalTime: z.string().max(20).optional(),
       }),

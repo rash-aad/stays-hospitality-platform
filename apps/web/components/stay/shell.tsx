@@ -7,7 +7,7 @@ import { useGuest, useHydrated } from '@/lib/hooks';
 import { InstallPwa, useServiceWorker } from '../pwa';
 
 export type Home = {
-  guest: { id: string; firstName: string; lastName: string; email: string; phone: string | null; verified: boolean; notificationPrefs: Record<string, boolean> };
+  guest: { id: string; firstName: string; lastName: string; email: string; phone: string | null; verified: boolean; notificationPrefs: Record<string, boolean>; marketingOptIn: boolean };
   property: { name: string; phone: string | null; email: string | null; checkInTime: string; checkOutTime: string; images: { url: string; alt: string }[] } | null;
   stay: null | { id: string; bookingId: string; reference: string; status: string; checkIn: string; checkOut: string; inHouse: boolean; roomNumber: string | null; roomType: string; adults: number; children: number; room: { number: string; floor: string | null; housekeepingStatus: string } | null; paymentStatus: string; total: number; amountPaid: number };
   openRequests: { id: string; title: string; status: string; createdAt: string }[];

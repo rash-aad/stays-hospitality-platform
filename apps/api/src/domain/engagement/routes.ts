@@ -16,6 +16,7 @@ import { offset, pageMeta, pageQuery } from '../../lib/pagination.js';
 import { modifyBooking } from '../bookings/service.js';
 import { resolveStayContext } from '../guests/access.js';
 import { notify } from '../notifications/notify.js';
+import { maybeRequestReview } from '../marketing/routes.js';
 
 const idParam = z.object({ id: z.string().uuid() });
 
@@ -140,7 +141,7 @@ export const engagementRoutes: Routes = async (app) => {
       if (!['checked_in', 'checked_out'].includes(b.status)) throw conflict('You can share feedback once your stay has begun');
       const [row] = await tx.insert(guestFeedback).values({ ...req.body, recommend: req.body.recommend ?? null, comment: req.body.comment || null, tenantId: t.id, bookingId: b.id, guestId: g.guestId })
         .onConflictDoUpdate({ target: guestFeedback.bookingId, set: { ...req.body, recommend: req.body.recommend ?? null, comment: req.body.comment || null } }).returning();
-      return row!;
+      return { ...row!, reviewLinks: await maybeRequestReview(tx, t.id, row!.id) };
     });
     return reply.status(201).send({ data: f });
   });

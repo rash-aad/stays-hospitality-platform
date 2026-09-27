@@ -19,6 +19,7 @@ import { enabledMethods, getSettings, startPayment, type Instructions } from '..
 import { registerPaymentTarget } from '../payments/targets.js';
 import { releaseInventory, reserveInventory } from './inventory.js';
 import { nightPricer } from '../revenue/rules.js';
+import { earnForStay, returnPointsOnCancel } from '../loyalty/service.js';
 import { cancellationFee, eachNight, quoteStay, type Quote } from './pricing.js';
 
 type Booking = typeof bookings.$inferSelect;
@@ -74,16 +75,18 @@ export async function priceStay(tx: Tx, tenant: TenantInfo, req: StayRequest, op
   return { quote, roomType: rt, plan, property: prop!, coupon: quote.couponApplied ? coupon! : null };
 }
 
-export type GuestDetails = { email: string; firstName: string; lastName: string; phone?: string | null; country?: string | null };
+export type GuestDetails = { email: string; firstName: string; lastName: string; phone?: string | null; country?: string | null; marketingOptIn?: boolean };
 
 async function upsertGuest(tx: Tx, tenantId: string, g: GuestDetails) {
   const [existing] = await tx.select().from(guests).where(and(eq(guests.tenantId, tenantId), eq(sql`lower(${guests.email})`, g.email.trim().toLowerCase())));
   if (existing) {
     // Never overwrite a known guest's identity from an anonymous form; only fill blanks.
     if (!existing.phone && g.phone) await tx.update(guests).set({ phone: g.phone }).where(eq(guests.id, existing.id));
+    // A booking form can only ever turn marketing consent on (never off someone's explicit choice).
+    if (g.marketingOptIn && !existing.marketingOptIn) await tx.update(guests).set({ marketingOptIn: true }).where(eq(guests.id, existing.id));
     return existing;
   }
-  const [created] = await tx.insert(guests).values({ tenantId, email: g.email.trim(), firstName: g.firstName.trim(), lastName: g.lastName.trim(), phone: g.phone, country: g.country }).returning();
+  const [created] = await tx.insert(guests).values({ tenantId, email: g.email.trim(), firstName: g.firstName.trim(), lastName: g.lastName.trim(), phone: g.phone, country: g.country, marketingOptIn: !!g.marketingOptIn }).returning();
   return created!;
 }
 
@@ -187,7 +190,7 @@ async function tenantLite(tx: Tx, tenantId: string) {
   return t!;
 }
 
-async function recomputePaid(tx: Tx, bookingId: string) {
+export async function recomputePaid(tx: Tx, bookingId: string) {
   const rows = await tx.select().from(payments).where(and(eq(payments.targetType, 'booking'), eq(payments.targetId, bookingId)));
   const paid = rows.filter((p) => ['captured', 'partially_refunded', 'refunded'].includes(p.status)).reduce((s, p) => s + p.amount - p.refundedAmount, 0);
   const refunded = rows.reduce((s, p) => s + p.refundedAmount, 0);
@@ -264,7 +267,9 @@ export async function cancelBooking(
     .returning();
   await tx.update(stays).set({ status: 'cancelled' }).where(eq(stays.bookingId, b.id));
   await tx.update(payments).set({ status: 'cancelled' }).where(and(eq(payments.targetType, 'booking'), eq(payments.targetId, b.id), inArray(payments.status, ['awaiting_payment', 'pending_verification', 'rejected'])));
-  const refundDue = Math.max(0, b.amountPaid - fee);
+  // Points spent on the booking go back to the guest; only money paid is refundable.
+  const pointsValue = await returnPointsOnCancel(tx, tenant.id, b.id);
+  const refundDue = Math.max(0, b.amountPaid - pointsValue - fee);
   const [g] = await tx.select().from(guests).where(eq(guests.id, b.guestId));
   await notify(tx, {
     tenantId: tenant.id, recipient: { type: 'guest', id: b.guestId }, templateKey: 'booking.cancelled',
@@ -384,6 +389,7 @@ export async function checkOut(tx: Tx, tenant: TenantInfo, bookingId: string) {
     if (today < b.checkOut && item?.roomTypeId) await releaseInventory(tx, item.roomTypeId, today > b.checkIn ? today : b.checkIn, b.checkOut);
   }
   const invoice = await generateInvoice(tx, tenant, b.id, true);
+  await earnForStay(tx, tenant, b.id);
   return { booking: updated!, invoice };
 }
 

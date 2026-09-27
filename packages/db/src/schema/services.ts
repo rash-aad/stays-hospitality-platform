@@ -276,6 +276,8 @@ export const guestFeedback = pgTable(
     staffReply: text('staff_reply'),
     repliedByUserId: uuid('replied_by_user_id').references(() => users.id),
     repliedAt: ts('replied_at'),
+    /** When the guest was invited to post a public review (sent once). */
+    reviewRequestedAt: ts('review_requested_at'),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex('guest_feedback_booking_uq').on(t.bookingId), check('guest_feedback_overall_ck', sql`${t.overall} between 1 and 5`), check('guest_feedback_nps_ck', sql`${t.recommend} is null or ${t.recommend} between 0 and 10`)],

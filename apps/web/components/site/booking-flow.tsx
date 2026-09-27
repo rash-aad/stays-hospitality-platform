@@ -29,7 +29,7 @@ export function BookingFlow({ propertyName }: { propertyName: string }) {
   const [extras, setExtras] = useState<string[]>([]);
   const [coupon, setCoupon] = useState('');
   const [quote, setQuote] = useState<Quote | null>(null);
-  const [g, setG] = useState({ firstName: '', lastName: '', email: '', phone: '', specialRequests: '', arrivalTime: '' });
+  const [g, setG] = useState({ firstName: '', lastName: '', email: '', phone: '', specialRequests: '', arrivalTime: '', marketingOptIn: false });
   const [pay, setPay] = useState('');
   const [busy, setBusy] = useState(false);
   const [key] = useState(() => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Date.now())));
@@ -66,7 +66,7 @@ export function BookingFlow({ propertyName }: { propertyName: string }) {
     setBusy(true); setErr(null);
     const r = await fetch('/api/v1/public/bookings', {
       method: 'POST', headers: { 'content-type': 'application/json', 'idempotency-key': key },
-      body: JSON.stringify({ roomTypeId: pick.r.roomType.id, ratePlanId: pick.rate.ratePlanId, checkIn: q.checkIn, checkOut: q.checkOut, adults: Number(q.adults), children: Number(q.children), couponCode: coupon || null, addOnIds: extras, paymentMethod: pay, guest: { firstName: g.firstName, lastName: g.lastName, email: g.email, phone: g.phone }, specialRequests: g.specialRequests || undefined, arrivalTime: g.arrivalTime || undefined }),
+      body: JSON.stringify({ roomTypeId: pick.r.roomType.id, ratePlanId: pick.rate.ratePlanId, checkIn: q.checkIn, checkOut: q.checkOut, adults: Number(q.adults), children: Number(q.children), couponCode: coupon || null, addOnIds: extras, paymentMethod: pay, guest: { firstName: g.firstName, lastName: g.lastName, email: g.email, phone: g.phone, marketingOptIn: g.marketingOptIn }, specialRequests: g.specialRequests || undefined, arrivalTime: g.arrivalTime || undefined }),
     });
     const j = await r.json();
     setBusy(false);
@@ -148,6 +148,7 @@ export function BookingFlow({ propertyName }: { propertyName: string }) {
               <label><span className="t-label">Promo code</span><input className="t-input uppercase" name="coupon" value={coupon} onChange={(e) => setCoupon(e.target.value.trim())} /></label>
               {quote?.couponError && coupon && <p className="text-sm text-red-800 md:col-span-2">{quote.couponError}</p>}
               <label className="md:col-span-2"><span className="t-label">Anything we should know?</span><textarea className="t-input" rows={3} name="specialRequests" value={g.specialRequests} onChange={(e) => setG({ ...g, specialRequests: e.target.value })} /></label>
+              <label className="flex items-start gap-2 text-sm md:col-span-2"><input type="checkbox" className="mt-1" name="marketingOptIn" checked={g.marketingOptIn} onChange={(e) => setG({ ...g, marketingOptIn: e.target.checked })} /> Send me occasional offers and news by email (unsubscribe any time)</label>
             </fieldset>
             <fieldset>
               <legend className="display mb-4 text-2xl">Payment</legend>

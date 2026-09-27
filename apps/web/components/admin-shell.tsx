@@ -23,6 +23,7 @@ const NAV: { group: string; items: Item[] }[] = [
     { href: '/admin/night-audit', label: 'Night audit', perm: 'frontoffice.audit' },
     { href: '/admin/messages', label: 'Messages', perm: 'messages.manage', badge: 'messages' },
     { href: '/admin/feedback', label: 'Feedback', perm: 'guests.read' },
+    { href: '/admin/campaigns', label: 'Campaigns', perm: 'guests.read' },
     { href: '/admin/events', label: 'Events & banquets', perm: 'events.manage', mod: 'events' },
   ] },
   { group: 'Dining', items: [
@@ -47,6 +48,7 @@ const NAV: { group: string; items: Item[] }[] = [
     { href: '/admin/settings/payments', label: 'Payment methods', perm: 'payments.read' },
     { href: '/admin/settings/subscription', label: 'Subscription', perm: 'tenant.settings' },
     { href: '/admin/settings/billing', label: 'Billing & GST', perm: 'tenant.settings' },
+    { href: '/admin/settings/loyalty', label: 'Loyalty & reviews', perm: 'tenant.settings' },
     { href: '/admin/settings/channels', label: 'Channels (iCal)', perm: 'bookings.read', mod: 'room_booking' },
     { href: '/admin/settings/modules', label: 'Modules', perm: 'tenant.settings' },
     { href: '/admin/settings/staff', label: 'Staff & roles', perm: 'staff.manage' },

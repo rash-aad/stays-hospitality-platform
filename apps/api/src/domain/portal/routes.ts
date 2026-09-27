@@ -47,7 +47,7 @@ export const portalRoutes: Routes = async (app) => {
       const offers = t.modules.has('offers') ? await tx.select().from(promotions).where(and(eq(promotions.tenantId, t.id), eq(promotions.active, true), eq(promotions.showInPortal, true), or(isNull(promotions.startsAt), lte(promotions.startsAt, now)), or(isNull(promotions.endsAt), gte(promotions.endsAt, now)))).orderBy(asc(promotions.sort)).limit(3) : [];
       return {
         data: {
-          guest: { id: ctx.guest.id, firstName: ctx.guest.firstName, lastName: ctx.guest.lastName, email: ctx.guest.email, phone: ctx.guest.phone, verified: ctx.verified, notificationPrefs: ctx.guest.notificationPrefs },
+          guest: { id: ctx.guest.id, firstName: ctx.guest.firstName, lastName: ctx.guest.lastName, email: ctx.guest.email, phone: ctx.guest.phone, verified: ctx.verified, notificationPrefs: ctx.guest.notificationPrefs, marketingOptIn: ctx.guest.marketingOptIn },
           property: prop && { name: prop.name, phone: prop.phone, email: prop.email, checkInTime: prop.checkInTime, checkOutTime: prop.checkOutTime, images: prop.images.slice(0, 1) },
           stay, openRequests, activeOrders, upcomingTables, unreadNotifications: unread, offers, modules: [...t.modules],
         },

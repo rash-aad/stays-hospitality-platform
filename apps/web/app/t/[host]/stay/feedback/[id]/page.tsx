@@ -23,6 +23,7 @@ export default function Feedback({ params }: { params: Promise<{ id: string }> }
   const [f, setF] = useState<F | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [links, setLinks] = useState<{ googleUrl: string | null; tripadvisorUrl: string | null } | null>(null);
   useEffect(() => { if (data && !f) setF(data.data.feedback ?? { overall: 0, recommend: null, aspects: {}, comment: '', publicConsent: false, staffReply: null }); }, [data, f]);
   if (error) return <Notice tone="error">{(error as Error).message}</Notice>;
   if (!data || !f) return <p className="t-muted">Loading…</p>;
@@ -37,7 +38,8 @@ export default function Feedback({ params }: { params: Promise<{ id: string }> }
         if (!f.overall) return setMsg('Please choose an overall rating.');
         setBusy(true);
         try {
-          await guestApi(`/portal/bookings/${id}/feedback`, { body: { overall: f.overall, recommend: f.recommend, aspects: f.aspects, comment: f.comment || null, publicConsent: f.publicConsent } });
+          const r = await guestApi<{ data: { reviewLinks: { googleUrl: string | null; tripadvisorUrl: string | null } | null } }>(`/portal/bookings/${id}/feedback`, { body: { overall: f.overall, recommend: f.recommend, aspects: f.aspects, comment: f.comment || null, publicConsent: f.publicConsent } });
+          setLinks(r.data.reviewLinks);
           setMsg('Thank you — the team reads every one.'); mutate();
         } catch (err) { setMsg((err as Error).message); } finally { setBusy(false); }
       }}>
@@ -56,6 +58,16 @@ export default function Feedback({ params }: { params: Promise<{ id: string }> }
         <button className="t-btn w-full" disabled={busy}>{data.data.feedback ? 'Update feedback' : 'Send feedback'}</button>
       </form>
       {msg && <Notice>{msg}</Notice>}
+      {links && (
+        <section className="mt-6 border t-line p-4 text-center" data-testid="review-ask">
+          <p className="display text-2xl">Glad you enjoyed it</p>
+          <p className="mt-1 text-sm t-muted">Would you share a few words publicly? It really helps a small property.</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {links.googleUrl && <a className="t-btn" href={links.googleUrl} target="_blank" rel="noreferrer">Review on Google</a>}
+            {links.tripadvisorUrl && <a className="t-btn t-btn-outline" href={links.tripadvisorUrl} target="_blank" rel="noreferrer">Review on Tripadvisor</a>}
+          </div>
+        </section>
+      )}
     </>
   );
 }

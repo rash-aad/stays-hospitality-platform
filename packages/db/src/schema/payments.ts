@@ -5,7 +5,7 @@ import { tenants, users } from './core.js';
 import { guests } from './guests.js';
 import { bookings } from './bookings.js';
 
-export const PAYMENT_METHODS = ['upi_manual', 'upi_gateway', 'room_charge', 'pay_at_property'] as const;
+export const PAYMENT_METHODS = ['upi_manual', 'upi_gateway', 'room_charge', 'pay_at_property', 'loyalty'] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export const paymentSettings = pgTable('payment_settings', {

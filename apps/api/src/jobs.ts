@@ -11,6 +11,8 @@ import { sendReminders } from './domain/engagement/reminders.js';
 import { syncAllFeeds } from './domain/channels/routes.js';
 import { sendDueDailyReports } from './domain/operations/report.js';
 import { subscriptionSweep } from './domain/subscriptions/service.js';
+import { sendCampaign } from './domain/marketing/campaigns.js';
+import { withTenant } from './infra/db.js';
 import { properties, tenantModules, tenants } from '@hp/db';
 import { and, eq } from 'drizzle-orm';
 import { todayIn } from './lib/dates.js';
@@ -31,6 +33,12 @@ export async function startJobs(config: Config) {
     'ical-sync': () => syncAllFeeds(),
     'daily-report': () => sendDueDailyReports(),
     subscriptions: () => subscriptionSweep(),
+    'campaign-send': async (job) => {
+      const { tenantId, campaignId } = job.data as { tenantId: string; campaignId: string };
+      const n = await withTenant(tenantId, (tx) => sendCampaign(tx, tenantId, campaignId));
+      await dispatchNotifications();
+      return n;
+    },
     'generate-housekeeping': () =>
       asSystem(async (tx) => {
         const rows = await tx.select({ t: tenants, p: properties }).from(tenants).innerJoin(properties, eq(properties.tenantId, tenants.id))
