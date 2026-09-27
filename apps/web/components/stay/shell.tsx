@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { guestApi, onAuthChange, refreshSession, setAccessToken, signOut } from '@/lib/api';
 import { useGuest, useHydrated } from '@/lib/hooks';
 import { InstallPwa, useServiceWorker } from '../pwa';
+import { useT } from '@/lib/i18n';
 
 export type Home = {
   guest: { id: string; firstName: string; lastName: string; email: string; phone: string | null; verified: boolean; notificationPrefs: Record<string, boolean>; marketingOptIn: boolean };
@@ -35,6 +36,7 @@ const TABS = [
 
 export function GuestShell({ name, children }: { name: string; children: ReactNode }) {
   useServiceWorker();
+  const t = useT();
   const path = usePathname();
   const [state, setState] = useState<'checking' | 'in' | 'out'>('checking');
   useEffect(() => {
@@ -46,7 +48,7 @@ export function GuestShell({ name, children }: { name: string; children: ReactNo
   const { data, mutate, error } = useGuest<{ data: Home }>(state === 'in' ? '/portal/home' : null, { refreshInterval: 30_000 });
   const reload = useCallback(() => void mutate(), [mutate]);
   if (path.startsWith('/stay/access') || path.startsWith('/stay/verify')) return <Frame name={name}>{children}</Frame>;
-  if (state === 'checking' || (state === 'in' && !data && !error)) return <Frame name={name}><p className="t-muted py-20 text-center">Opening your stay…</p></Frame>;
+  if (state === 'checking' || (state === 'in' && !data && !error)) return <Frame name={name}><p className="t-muted py-20 text-center">{t('Opening your stay…')}</p></Frame>;
   if (state === 'out' || error) return <Frame name={name}><SignIn onIn={() => setState('in')} /></Frame>;
   const home = data!.data;
   const tabs = TABS.filter((t) => !t.mod || home.modules.includes(t.mod));
@@ -55,15 +57,15 @@ export function GuestShell({ name, children }: { name: string; children: ReactNo
       <div className="mx-auto min-h-dvh max-w-xl pb-24">
         <header className="flex items-center justify-between px-5 pt-5 pb-3">
           <a href="/" className="display text-xl">{name}</a>
-          <a href="/stay/notifications" className="relative text-sm" aria-label="Notifications">Updates{home.unreadNotifications > 0 && <span className="t-accent ml-1.5 inline-grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] tabular-nums">{home.unreadNotifications}</span>}</a>
+          <a href="/stay/notifications" className="relative text-sm" aria-label="Notifications">{t('Updates')}{home.unreadNotifications > 0 && <span className="t-accent ml-1.5 inline-grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] tabular-nums">{home.unreadNotifications}</span>}</a>
         </header>
-        {!home.guest.verified && <p className="mx-5 mb-4 border-l-2 pl-3 text-sm" style={{ borderColor: 'var(--t-accent)' }}>Please confirm your email — we sent a link to {home.guest.email}. Your bookings appear once it’s confirmed.</p>}
+        {!home.guest.verified && <p className="mx-5 mb-4 border-l-2 pl-3 text-sm" style={{ borderColor: 'var(--t-accent)' }}>{t('Please confirm your email — we sent a link to {email}. Your bookings appear once it’s confirmed.', { email: home.guest.email })}</p>}
         <main className="px-5">{children}</main>
         <nav className="fixed inset-x-0 bottom-0 z-30 border-t t-line pb-[env(safe-area-inset-bottom)]" style={{ background: 'var(--t-bg)' }}>
           <ul className="mx-auto grid max-w-xl" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
-            {tabs.map((t) => {
-              const active = t.href === '/stay' ? path === '/stay' : path.startsWith(t.href);
-              return <li key={t.href}><a href={t.href} className="flex h-14 flex-col items-center justify-center text-[13px]" style={{ color: active ? 'var(--t-ink)' : 'var(--t-muted)', fontWeight: active ? 600 : 400 }}>{t.label}{active && <span className="mt-1 h-0.5 w-5" style={{ background: 'var(--t-ink)' }} />}</a></li>;
+            {tabs.map((tab) => {
+              const active = tab.href === '/stay' ? path === '/stay' : path.startsWith(tab.href);
+              return <li key={tab.href}><a href={tab.href} className="flex h-14 flex-col items-center justify-center text-[13px]" style={{ color: active ? 'var(--t-ink)' : 'var(--t-muted)', fontWeight: active ? 600 : 400 }}>{t(tab.label)}{active && <span className="mt-1 h-0.5 w-5" style={{ background: 'var(--t-ink)' }} />}</a></li>;
             })}
           </ul>
         </nav>
@@ -84,6 +86,7 @@ function Frame({ name, children }: { name: string; children: ReactNode }) {
 function SignIn({ onIn }: { onIn: () => void }) {
   const [mode, setMode] = useState<'link' | 'password' | 'register'>('link');
   const ready = useHydrated();
+  const t = useT();
   const [f, setF] = useState({ email: '', reference: '', password: '', firstName: '', lastName: '' });
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -97,24 +100,24 @@ function SignIn({ onIn }: { onIn: () => void }) {
     const j = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) return setErr(j.error?.message ?? 'Something went wrong');
-    if (mode === 'link') return setMsg(`If ${f.reference.toUpperCase()} matches that email, a private link to your stay is on its way. It works for 24 hours.`);
+    if (mode === 'link') return setMsg(t('If {ref} matches that email, a private link to your stay is on its way. It works for 24 hours.', { ref: f.reference.toUpperCase() }));
     setAccessToken('guest', j.accessToken);
     onIn();
   }
   return (
     <form onSubmit={submit} className="space-y-4" data-testid="guest-signin">
-      <h1 className="display text-4xl">Your stay</h1>
-      <p className="t-muted">Order food to your room, ask for anything, book a table and see your bill — all in one place.</p>
+      <h1 className="display text-4xl">{t('Your stay')}</h1>
+      <p className="t-muted">{t('Order food to your room, ask for anything, book a table and see your bill — all in one place.')}</p>
       <div className="flex gap-5 border-b t-line text-sm">
-        {([['link', 'Booking reference'], ['password', 'Password'], ['register', 'Create account']] as const).map(([k, l]) => <button type="button" key={k} onClick={() => setMode(k)} className="-mb-px border-b-2 pb-2" style={{ borderColor: mode === k ? 'var(--t-ink)' : 'transparent', opacity: mode === k ? 1 : 0.6 }}>{l}</button>)}
+        {([['link', 'Booking reference'], ['password', 'Password'], ['register', 'Create account']] as const).map(([k, l]) => <button type="button" key={k} onClick={() => setMode(k)} className="-mb-px border-b-2 pb-2" style={{ borderColor: mode === k ? 'var(--t-ink)' : 'transparent', opacity: mode === k ? 1 : 0.6 }}>{t(l)}</button>)}
       </div>
-      {mode === 'register' && <div className="grid grid-cols-2 gap-3"><label><span className="t-label">First name</span><input className="t-input" required value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></label><label><span className="t-label">Last name</span><input className="t-input" required value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></label></div>}
-      <label className="block"><span className="t-label">Email used for your booking</span><input className="t-input" type="email" autoComplete="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
-      {mode === 'link' && <label className="block"><span className="t-label">Booking reference</span><input className="t-input uppercase" required placeholder="BK-7K3Q9M" value={f.reference} onChange={(e) => setF({ ...f, reference: e.target.value })} /></label>}
-      {mode !== 'link' && <label className="block"><span className="t-label">Password</span><input className="t-input" type="password" autoComplete={mode === 'register' ? 'new-password' : 'current-password'} required minLength={mode === 'register' ? 10 : 1} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></label>}
+      {mode === 'register' && <div className="grid grid-cols-2 gap-3"><label><span className="t-label">{t('First name')}</span><input className="t-input" required value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></label><label><span className="t-label">{t('Last name')}</span><input className="t-input" required value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></label></div>}
+      <label className="block"><span className="t-label">{t('Email used for your booking')}</span><input className="t-input" type="email" autoComplete="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
+      {mode === 'link' && <label className="block"><span className="t-label">{t('Booking reference')}</span><input className="t-input uppercase" required placeholder="BK-7K3Q9M" value={f.reference} onChange={(e) => setF({ ...f, reference: e.target.value })} /></label>}
+      {mode !== 'link' && <label className="block"><span className="t-label">{t('Password')}</span><input className="t-input" type="password" autoComplete={mode === 'register' ? 'new-password' : 'current-password'} required minLength={mode === 'register' ? 10 : 1} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></label>}
       {err && <p role="alert" className="text-sm text-red-800">{err}</p>}
       {msg && <p className="t-surface p-4 text-sm">{msg}</p>}
-      <button className="t-btn w-full" disabled={busy || !ready}>{busy ? 'Please wait…' : mode === 'link' ? 'Email me a link' : mode === 'password' ? 'Sign in' : 'Create account'}</button>
+      <button className="t-btn w-full" disabled={busy || !ready}>{busy ? t('Please wait…') : mode === 'link' ? t('Email me a link') : mode === 'password' ? t('Sign in') : t('Create account')}</button>
     </form>
   );
 }
@@ -143,6 +146,7 @@ export function VerifyEmail() {
 }
 
 export function SignOutButton() {
-  return <button className="t-btn t-btn-outline w-full" onClick={async () => { await signOut('guest'); location.href = '/stay'; }}>Sign out</button>;
+  const t = useT();
+  return <button className="t-btn t-btn-outline w-full" onClick={async () => { await signOut('guest'); location.href = '/stay'; }}>{t('Sign out')}</button>;
 }
 export { InstallPwa, guestApi };

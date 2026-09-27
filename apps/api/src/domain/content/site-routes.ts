@@ -1,4 +1,5 @@
-import { SECTION_LABELS, SECTION_MODULES, SITE_TEMPLATES, themeTokensSchema } from '@hp/contracts';
+import { SECTION_LABELS, SECTION_MODULES, SITE_TEMPLATES, themeTokensSchema, translateObject, type PageDoc } from '@hp/contracts';
+import { localisePage, siteChrome, translationMap } from './translations.js';
 import { domains, guestMessages, guests, pages, pageVersions, promotions, properties, roomTypes, siteSettings, tenants, themes } from '@hp/db';
 import { and, asc, eq, gte, isNull, lte, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -44,7 +45,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
       const [settings] = await tx.select().from(siteSettings).where(eq(siteSettings.tenantId, t.id));
       const ps = await tx.select({ id: pages.id, slug: pages.slug, title: pages.title, sort: pages.sort, updatedAt: pages.updatedAt, hasUnpublishedChanges: pages.hasUnpublishedChanges, published: sql<boolean>`${pages.publishedVersionId} is not null` }).from(pages).where(eq(pages.tenantId, t.id)).orderBy(asc(pages.sort));
       const ds = await tx.select().from(domains).where(eq(domains.tenantId, t.id));
-      return { data: { theme, settings, pages: ps, domains: ds.map((d) => ({ ...d, txtRecord: d.kind === 'custom' ? { name: `${TXT_PREFIX}.${d.hostname}`, value: `stays-verify=${d.verificationToken}` } : null })), modules: [...t.modules] } };
+      return { data: { theme, settings, pages: ps, domains: ds.map((d) => ({ ...d, txtRecord: d.kind === 'custom' ? { name: `${TXT_PREFIX}.${d.hostname}`, value: `bookez-verify=${d.verificationToken}` } : null })), modules: [...t.modules] } };
     });
   });
 
@@ -197,7 +198,7 @@ export const siteRoutes: Routes = async (app, { config }) => {
       await audit(tx, req, { action: 'domain.add', entityType: 'domain', entityId: d.id, changes: { hostname: d.hostname } });
       return d;
     });
-    return reply.status(201).send({ data: { ...d, txtRecord: { name: `${TXT_PREFIX}.${d.hostname}`, value: `stays-verify=${d.verificationToken}` }, cname: `sites.${config.PLATFORM_ROOT_DOMAIN}` } });
+    return reply.status(201).send({ data: { ...d, txtRecord: { name: `${TXT_PREFIX}.${d.hostname}`, value: `bookez-verify=${d.verificationToken}` }, cname: `sites.${config.PLATFORM_ROOT_DOMAIN}` } });
   });
   app.post('/admin/domains/:id/verify', { preHandler: [requireStaff('tenant.settings'), requireModule('website_builder')], schema: { tags: ['website'], params: idParam } }, async (req) => {
     const t = tenantOf(req);
@@ -228,30 +229,33 @@ export const siteRoutes: Routes = async (app, { config }) => {
     return { live: true };
   });
 
-  app.get('/public/site', { preHandler: resolvePublicTenant, schema: { tags: ['website'] } }, async (req) => {
+  app.get('/public/site', { preHandler: resolvePublicTenant, schema: { tags: ['website'], querystring: z.object({ lang: z.string().max(5).optional() }) } }, async (req) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       const [theme] = await tx.select().from(themes).where(eq(themes.tenantId, t.id));
-      const [settings] = await tx.select().from(siteSettings).where(eq(siteSettings.tenantId, t.id));
+      const [raw] = await tx.select().from(siteSettings).where(eq(siteSettings.tenantId, t.id));
+      const lang = raw?.languages.includes(req.query.lang ?? '') ? req.query.lang : 'en';
+      const settings = raw && { ...raw, ...translateObject(siteChrome(raw), await translationMap(tx, t.id, 'site', lang)) };
       const [prop] = await tx.select().from(properties).where(eq(properties.tenantId, t.id)).limit(1);
       const published = await tx.select({ slug: pages.slug, title: pages.title }).from(pages).where(and(eq(pages.tenantId, t.id), sql`${pages.publishedVersionId} is not null`)).orderBy(asc(pages.sort));
       const [primary] = await tx.select({ hostname: domains.hostname }).from(domains).where(and(eq(domains.tenantId, t.id), eq(domains.isPrimary, true)));
       return {
         data: {
           tenant: { slug: t.slug, name: t.name, currency: t.currency, timezone: t.timezone, modules: [...t.modules] },
-          theme: theme ?? null, settings: settings ?? null, pages: published, primaryHost: primary?.hostname ?? null,
+          theme: theme ?? null, settings: settings ?? null, pages: published, primaryHost: primary?.hostname ?? null, locale: lang,
           property: prop && { name: prop.name, tagline: prop.tagline, phone: prop.phone, email: prop.email, addressLine: prop.addressLine, city: prop.city, region: prop.region, country: prop.country, postalCode: prop.postalCode, latitude: prop.latitude, longitude: prop.longitude, checkInTime: prop.checkInTime, checkOutTime: prop.checkOutTime, starRating: prop.starRating, images: prop.images, amenities: prop.amenities },
         },
       };
     });
   });
 
-  app.get('/public/pages/:slug', { preHandler: resolvePublicTenant, schema: { tags: ['website'], params: z.object({ slug: z.string().max(60) }) } }, async (req) => {
+  app.get('/public/pages/:slug', { preHandler: resolvePublicTenant, schema: { tags: ['website'], params: z.object({ slug: z.string().max(60) }), querystring: z.object({ lang: z.string().max(5).optional() }) } }, async (req) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => {
       const row = await publishedPage(tx, t.id, req.params.slug);
       if (!row) throw notFound('Page');
-      return { data: { slug: row.page.slug, title: row.page.title, doc: row.version.doc, seo: row.version.seo, version: row.version.version, publishedAt: row.version.createdAt } };
+      const { doc, seo } = localisePage(row.version.doc as PageDoc, row.version.seo as { title?: string; description?: string }, await translationMap(tx, t.id, `page:${row.page.id}`, req.query.lang));
+      return { data: { slug: row.page.slug, title: row.page.title, doc, seo, version: row.version.version, publishedAt: row.version.createdAt } };
     });
   });
 

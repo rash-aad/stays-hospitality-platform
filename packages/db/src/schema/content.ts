@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, index, integer, jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { createdAt, id, tenantId, ts, updatedAt } from './_common.js';
 import { tenants, users } from './core.js';
 import { properties } from './property.js';
@@ -52,8 +52,23 @@ export const siteSettings = pgTable('site_settings', {
     .notNull()
     .default({ columns: [], note: '', social: [] }),
   seoDefaults: jsonb('seo_defaults').$type<PageSeo>().notNull().default({}),
+  /** Languages the website and guest app offer (English is always included). */
+  languages: text('languages').array().notNull().default(sql`'{en}'::text[]`),
   updatedAt: updatedAt(),
 });
+
+/** Translated texts for a page (`page:<id>`) or the site menus/footer (`site`), per language. */
+export const contentTranslations = pgTable(
+  'content_translations',
+  {
+    tenantId: tenantId(),
+    scope: text('scope').notNull(),
+    locale: text('locale').notNull(),
+    strings: jsonb('strings').$type<Record<string, { source: string; text: string }>>().notNull().default({}),
+    updatedAt: updatedAt(),
+  },
+  (t) => [primaryKey({ columns: [t.tenantId, t.scope, t.locale] })],
+);
 
 export const pages = pgTable(
   'pages',

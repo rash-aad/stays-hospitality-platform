@@ -127,3 +127,10 @@ The platform console (`/platform`) is served only on `PLATFORM_HOST`; every othe
 - **Overbooking:** if an OTA sells a room you no longer have, the booking is still recorded and flagged *Overbooked* (page banner, booking drawer, sync log) — move a guest on the tape chart, then mark it resolved. A modification that can't be applied is flagged the same way.
 - Don't also import the same site's **iCal** feed, or its bookings are counted twice.
 - The Channex connector follows Channex's documented API (`/availability`, `/restrictions`, `/booking_revisions/feed`, `/ack`, `user-api-key` header). **Verify it against Channex staging with your own account before switching to production.**
+
+## Languages (English, हिन्दी, தமிழ், മലയാളം)
+
+- **Website → Languages**: tick the languages to offer. Guests choose from a switcher in the site menu and in the guest app (More); the choice is remembered per site in a cookie.
+- **Interface text** — menus, buttons, the booking flow, payment page, table and contact forms, and the main guest-app screens — comes translated (`apps/web/lib/i18n/messages.ts`, keyed by the English text; anything missing shows in English). The Tamil and Malayalam strings should be reviewed by a native speaker before launch in those regions.
+- **Your content**: each page (and *Menus & footer*) has a *Translate* screen listing every text next to its translation. Layout, images and links are shared across languages. Translations are live when saved; if the English later changes, that line falls back to English (and is flagged) until re-translated. SEO title and description are translatable too.
+- Not yet translated: email/SMS templates, and less-used guest-app screens (order tracking, requests detail, experiences, guide, messages) — they show in English.

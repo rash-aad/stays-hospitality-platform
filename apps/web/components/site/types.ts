@@ -3,9 +3,11 @@ import type { PageDoc, ThemeTokens } from '@hp/contracts';
 export type SiteInfo = {
   tenant: { slug: string; name: string; currency: string; timezone: string; modules: string[] };
   theme: { templateKey: string; tokens: Partial<ThemeTokens>; logoUrl: string | null; faviconUrl: string | null } | null;
-  settings: { navigation: { label: string; href: string }[]; navCta: { label: string; href: string } | null; footer: { columns: { title: string; links: { label: string; href: string }[] }[]; note: string; social: { label: string; href: string }[] }; seoDefaults: { title?: string; description?: string; ogImage?: string } } | null;
+  settings: { navigation: { label: string; href: string }[]; navCta: { label: string; href: string } | null; footer: { columns: { title: string; links: { label: string; href: string }[] }[]; note: string; social: { label: string; href: string }[] }; seoDefaults: { title?: string; description?: string; ogImage?: string }; languages?: string[] } | null;
   pages: { slug: string; title: string }[];
   primaryHost: string | null;
+  /** Language the site data was served in (English unless the visitor chose an offered language). */
+  locale?: string;
   property: { name: string; tagline: string | null; phone: string | null; email: string | null; addressLine: string | null; city: string | null; region: string | null; country: string; postalCode: string | null; latitude: number | null; longitude: number | null; checkInTime: string; checkOutTime: string; starRating: number | null; images: { url: string; alt: string }[]; amenities: string[] } | null;
 };
 export type RoomTypeCard = { id: string; name: string; slug: string; description: string | null; images: { url: string; alt: string }[]; amenities: string[]; bedConfig: string | null; sizeSqm: number | null; view: string | null; maxOccupancy: number; fromPrice: number | null };

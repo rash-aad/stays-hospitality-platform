@@ -2,13 +2,14 @@ import type { PageDoc } from '@hp/contracts';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PageView } from '@/components/site/page-view';
-import { decodeHost, getSite, getSiteData, publicGet } from '@/lib/server';
+import { chosenLang, decodeHost, getSite, getSiteData, publicGet } from '@/lib/server';
 
 type Props = { params: Promise<{ host: string; slug: string }> };
 type Page = { data: { slug: string; title: string; doc: PageDoc; seo: { title?: string; description?: string; ogImage?: string; noindex?: boolean } } };
 
 async function load(host: string, slug: string) {
-  return publicGet<Page>(host, `/public/pages/${encodeURIComponent(slug)}`);
+  const lang = await chosenLang();
+  return publicGet<Page>(host, `/public/pages/${encodeURIComponent(slug)}${lang === 'en' ? '' : `?lang=${lang}`}`);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { notFound } from 'next/navigation';
 import { fontHref, themeVars } from '@/components/site/theme';
 import { decodeHost, getSite, siteLive } from '@/lib/server';
+import { LocaleProvider } from '@/lib/i18n';
+import type { Locale } from '@hp/contracts';
 
 type Props = { children: React.ReactNode; params: Promise<{ host: string }> };
 
@@ -34,7 +36,7 @@ export default async function TenantLayout({ children, params }: Props) {
   return (
     <div className="site min-h-dvh" style={themeVars(tokens)}>
       {href && <link rel="stylesheet" href={href} precedence="default" />}
-      {children}
+      <LocaleProvider locale={(site.locale ?? 'en') as Locale} languages={(site.settings?.languages ?? ['en']) as Locale[]}>{children}</LocaleProvider>
     </div>
   );
 }

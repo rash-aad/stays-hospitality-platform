@@ -36,10 +36,10 @@ export async function verifyDomain(tx: Tx, tenantId: string, id: string) {
   try {
     records = await txtLookup(`${TXT_PREFIX}.${d.hostname}`);
   } catch {
-    throw conflict(`We couldn’t find the TXT record yet. DNS changes can take up to an hour.`, { record: `${TXT_PREFIX}.${d.hostname}`, value: `stays-verify=${d.verificationToken}` });
+    throw conflict(`We couldn’t find the TXT record yet. DNS changes can take up to an hour.`, { record: `${TXT_PREFIX}.${d.hostname}`, value: `bookez-verify=${d.verificationToken}` });
   }
-  const ok = records.some((parts) => parts.join('') === `stays-verify=${d.verificationToken}`);
-  if (!ok) throw conflict('The TXT record doesn’t match yet', { record: `${TXT_PREFIX}.${d.hostname}`, value: `stays-verify=${d.verificationToken}` });
+  const ok = records.some((parts) => parts.join('') === `bookez-verify=${d.verificationToken}`);
+  if (!ok) throw conflict('The TXT record doesn’t match yet', { record: `${TXT_PREFIX}.${d.hostname}`, value: `bookez-verify=${d.verificationToken}` });
   const [u] = await tx.update(domains).set({ verifiedAt: new Date() }).where(eq(domains.id, d.id)).returning();
   await invalidateHost(d.hostname);
   return u!;

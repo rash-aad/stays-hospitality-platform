@@ -1,4 +1,5 @@
 import 'server-only';
+import { cookies } from 'next/headers';
 import type { MenuData, SiteData, SiteInfo } from '@/components/site/types';
 
 const API = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
@@ -23,8 +24,15 @@ export async function siteLive(host: string): Promise<boolean> {
   }
 }
 
+/** The visitor's chosen language (cookie); the API falls back to English if the site doesn't offer it. */
+export async function chosenLang() {
+  const v = (await cookies()).get('bz_lang')?.value;
+  return v && /^(en|hi|ta|ml)$/.test(v) ? v : 'en';
+}
+
 export async function getSite(host: string) {
-  return (await publicGet<{ data: SiteInfo }>(host, '/public/site'))?.data ?? null;
+  const lang = await chosenLang();
+  return (await publicGet<{ data: SiteInfo }>(host, `/public/site${lang === 'en' ? '' : `?lang=${lang}`}`))?.data ?? null;
 }
 
 export async function getSiteData(host: string, site: SiteInfo): Promise<SiteData> {

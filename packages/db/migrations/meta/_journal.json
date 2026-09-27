@@ -71,6 +71,13 @@
       "when": 1790500719293,
       "tag": "0009_channel_manager",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790501863457,
+      "tag": "0010_translations",
+      "breakpoints": true
     }
   ]
 }

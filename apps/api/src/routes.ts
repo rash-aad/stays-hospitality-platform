@@ -30,6 +30,7 @@ import { revenueRoutes } from './domain/revenue/routes.js';
 import { subscriptionTenantRoutes } from './domain/subscriptions/tenant-routes.js';
 import { marketingRoutes } from './domain/marketing/routes.js';
 import { channelManagerRoutes } from './domain/channel-manager/routes.js';
+import { translationRoutes } from './domain/content/translations.js';
 import { subscriptionPlatformRoutes } from './domain/subscriptions/platform-routes.js';
 
 export const registerRoutes: Routes = async (app, { config }) => {
@@ -66,5 +67,6 @@ export const registerRoutes: Routes = async (app, { config }) => {
   await app.register(subscriptionTenantRoutes, opts);
   await app.register(marketingRoutes, opts);
   await app.register(channelManagerRoutes, opts);
+  await app.register(translationRoutes, opts);
   await app.register(subscriptionPlatformRoutes, opts);
 };

@@ -11,12 +11,12 @@ import { useStaff } from '@/lib/hooks';
 type Link = { label: string; href: string };
 type Site = {
   theme: { templateKey: string; tokens: ThemeTokens; logoUrl: string | null; faviconUrl: string | null } | null;
-  settings: { navigation: Link[]; navCta: Link | null; footer: { columns: { title: string; links: Link[] }[]; note: string; social: Link[] }; seoDefaults: { title?: string; description?: string; ogImage?: string } } | null;
+  settings: { navigation: Link[]; navCta: Link | null; footer: { columns: { title: string; links: Link[] }[]; note: string; social: Link[] }; seoDefaults: { title?: string; description?: string; ogImage?: string }; languages: string[] } | null;
   pages: { id: string; slug: string; title: string; updatedAt: string; hasUnpublishedChanges: boolean; published: boolean }[];
   domains: { id: string; hostname: string; kind: string; verifiedAt: string | null; isPrimary: boolean; txtRecord: { name: string; value: string } | null }[];
 };
 type Tpl = { key: string; name: string; description: string; suitedFor: string; previewImage: string; tokens: ThemeTokens };
-type Tab = 'pages' | 'templates' | 'theme' | 'navigation' | 'domains' | 'media';
+type Tab = 'pages' | 'templates' | 'theme' | 'navigation' | 'languages' | 'domains' | 'media';
 
 export default function SiteHub() {
   const [tab, setTab] = useState<Tab>('pages');
@@ -27,13 +27,14 @@ export default function SiteHub() {
   return (
     <>
       <PageHeader title="Website" sub={<a className="hover:underline" href={siteUrl} target="_blank" rel="noreferrer">{primary} ↗</a>}>
-        <Tabs value={tab} onChange={setTab} items={[{ value: 'pages', label: 'Pages' }, { value: 'templates', label: 'Templates' }, { value: 'theme', label: 'Theme' }, { value: 'navigation', label: 'Navigation & footer' }, { value: 'domains', label: 'Domains' }, { value: 'media', label: 'Media' }]} />
+        <Tabs value={tab} onChange={setTab} items={[{ value: 'pages', label: 'Pages' }, { value: 'templates', label: 'Templates' }, { value: 'theme', label: 'Theme' }, { value: 'navigation', label: 'Navigation & footer' }, { value: 'languages', label: 'Languages' }, { value: 'domains', label: 'Domains' }, { value: 'media', label: 'Media' }]} />
       </PageHeader>
       <ErrorNote error={error} />
       {!data ? <Loading /> : tab === 'pages' ? <Pages site={data.data} reload={mutate} siteUrl={siteUrl} />
         : tab === 'templates' ? <Templates current={data.data.theme?.templateKey} reload={mutate} />
         : tab === 'theme' ? <Theme site={data.data} reload={mutate} />
         : tab === 'navigation' ? <Navigation site={data.data} reload={mutate} />
+        : tab === 'languages' ? <Languages site={data.data} reload={mutate} />
         : tab === 'domains' ? <Domains site={data.data} reload={mutate} />
         : <Media />}
     </>
@@ -190,7 +191,7 @@ function LinksEditor({ links, onChange, max = 8 }: { links: Link[]; onChange: (l
 }
 
 function Navigation({ site, reload }: { site: Site; reload: () => void }) {
-  const s0 = site.settings ?? { navigation: [], navCta: null, footer: { columns: [], note: '', social: [] }, seoDefaults: {} };
+  const s0: NonNullable<Site['settings']> = site.settings ?? { navigation: [], navCta: null, footer: { columns: [], note: '', social: [] }, seoDefaults: {}, languages: ['en'] };
   const [s, setS] = useState(s0);
   const { busy, run } = useAction();
   return (
@@ -281,3 +282,35 @@ function Media() {
   );
 }
 void dateTime;
+
+const OTHER_LANGS = [['hi', 'हिन्दी — Hindi'], ['ta', 'தமிழ் — Tamil'], ['ml', 'മലയാളം — Malayalam']] as const;
+
+/** Which languages the website and guest app offer, and links to translate each page. */
+function Languages({ site, reload }: { site: Site; reload: () => void }) {
+  const { busy, run } = useAction();
+  const [langs, setLangs] = useState<string[]>(site.settings?.languages ?? ['en']);
+  const on = (l: string) => langs.includes(l);
+  const extra = langs.filter((l) => l !== 'en');
+  return (
+    <div className="max-w-3xl bg-panel">
+      <Section title="Languages offered" actions={<button className="btn btn-sm btn-primary" disabled={busy} onClick={() => run(() => staffApi('/admin/site-languages', { method: 'PUT', body: { languages: langs } }), 'Languages saved').then(() => reload())}>Save</button>}>
+        <p className="mb-3 text-[13px] text-muted">Guests pick a language from the site menu and the guest app. Buttons, forms and the booking flow are translated for you; translate your own page text below. Anything not yet translated shows in English.</p>
+        <ul className="space-y-2 text-[13px]">
+          <li className="flex items-center gap-2"><input type="checkbox" checked disabled /> English (always on)</li>
+          {OTHER_LANGS.map(([code, name]) => <li key={code}><label className="flex items-center gap-2"><input type="checkbox" checked={on(code)} onChange={(e) => setLangs(e.target.checked ? [...langs, code] : langs.filter((x) => x !== code))} /> {name}</label></li>)}
+        </ul>
+      </Section>
+      {extra.length > 0 && (
+        <Section title="Translate your content">
+          <table className="tbl" data-testid="translate-links"><thead><tr><th>Page</th>{extra.map((l) => <th key={l}>{OTHER_LANGS.find(([c]) => c === l)?.[1].split(' — ')[1]}</th>)}</tr></thead>
+            <tbody>
+              {[{ id: 'site', title: 'Menus & footer' }, ...site.pages].map((p) => (
+                <tr key={p.id}><td className="font-medium">{p.title}</td>{extra.map((l) => <td key={l}><a className="btn btn-sm" href={`/admin/site/translate/${p.id}?lang=${l}`}>Translate</a></td>)}</tr>
+              ))}
+            </tbody></table>
+          <p className="mt-2 text-xs text-muted">Translations go live when you save them. If you later change the English, that line shows in English again until it’s re-translated.</p>
+        </Section>
+      )}
+    </div>
+  );
+}

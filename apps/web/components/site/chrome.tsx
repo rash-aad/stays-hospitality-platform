@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import type { SiteInfo } from './types';
+import { LanguageSwitcher, useT } from '@/lib/i18n';
 
 export function SiteHeader({ site, overlay }: { site: SiteInfo; overlay?: boolean }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -13,7 +15,7 @@ export function SiteHeader({ site, overlay }: { site: SiteInfo; overlay?: boolea
     return () => window.removeEventListener('scroll', on);
   }, []);
   const nav = site.settings?.navigation ?? [];
-  const cta = site.settings?.navCta ?? (site.tenant.modules.includes('room_booking') ? { label: 'Book', href: '/book' } : null);
+  const cta = site.settings?.navCta ?? (site.tenant.modules.includes('room_booking') ? { label: t('Book'), href: '/book' } : null);
   const light = overlay && !scrolled && !open;
   return (
     <header className={`fixed inset-x-0 top-0 z-40 transition-colors duration-200 ${light ? 'text-white' : 'border-b t-line'}`} style={light ? undefined : { background: 'var(--t-bg)', color: 'var(--t-ink)' }}>
@@ -21,15 +23,17 @@ export function SiteHeader({ site, overlay }: { site: SiteInfo; overlay?: boolea
         <a href="/" className="display truncate text-[22px]">{site.theme?.logoUrl ? <img src={site.theme.logoUrl} alt={site.tenant.name} className="h-8 w-auto" /> : site.tenant.name}</a>
         <nav className="hidden items-center gap-8 text-[14px] md:flex">
           {nav.map((l) => <a key={l.href} href={l.href} className="opacity-85 hover:opacity-100">{l.label}</a>)}
-          {site.tenant.modules.includes('guest_portal') && <a href="/stay" className="opacity-85 hover:opacity-100">Your stay</a>}
+          {site.tenant.modules.includes('guest_portal') && <a href="/stay" className="opacity-85 hover:opacity-100">{t('Your stay')}</a>}
+          <LanguageSwitcher />
           {cta && <a href={cta.href} className={`t-btn h-10 px-5 ${light ? 't-btn-outline' : ''}`}>{cta.label}</a>}
         </nav>
-        <button className="md:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="site-menu" aria-label={open ? 'Close menu' : 'Open menu'}>{open ? 'Close' : 'Menu'}</button>
+        <button className="md:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="site-menu" aria-label={open ? 'Close menu' : 'Open menu'}>{open ? t('Close') : t('Menu')}</button>
       </div>
       {open && (
         <nav id="site-menu" aria-label="Site" className="anim-sheet border-t t-line px-5 pb-8 md:hidden" style={{ background: 'var(--t-bg)' }}>
-          {[...nav, ...(site.tenant.modules.includes('guest_portal') ? [{ label: 'Your stay', href: '/stay' }] : [])].map((l) => <a key={l.href} href={l.href} className="display block border-b t-line py-4 text-2xl">{l.label}</a>)}
+          {[...nav, ...(site.tenant.modules.includes('guest_portal') ? [{ label: t('Your stay'), href: '/stay' }] : [])].map((l) => <a key={l.href} href={l.href} className="display block border-b t-line py-4 text-2xl">{l.label}</a>)}
           {cta && <a href={cta.href} className="t-btn mt-6 w-full">{cta.label}</a>}
+          <LanguageSwitcher className="mt-6 block" />
         </nav>
       )}
     </header>
