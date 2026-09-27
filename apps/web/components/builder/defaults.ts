@@ -22,6 +22,7 @@ export const SECTION_DEFAULTS: Record<SectionType, Record<string, unknown>> = {
   cta: { heading: 'Ready when you are', body: 'Book direct for our best rate.', primary: { label: 'Book your stay', href: '/book' }, tone: 'inverse' },
   contact_form: { heading: 'Write to us', intro: 'We reply within a few hours.', topics: ['Reservations', 'Events', 'General'] },
   rich_text: { blocks: [{ type: 'h2', text: 'A heading' }, { type: 'p', text: 'Write anything here.' }], width: 'narrow' },
+  events_enquiry: { heading: 'Weddings & celebrations', intro: 'Tell us about your event and we’ll come back with dates, spaces and a proposal.', tone: 'muted' },
   guest_services: { heading: 'Staying with us?', intro: 'Everything for your stay in one place.', cta: { label: 'Open your stay', href: '/stay' } },
 };
 

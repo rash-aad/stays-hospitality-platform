@@ -49,6 +49,7 @@ export const SECTION_SCHEMAS = {
   contact_form: z.object({ heading: text(160), intro: text(600).optional(), topics: z.array(text(60)).max(10).default(['General', 'Reservations', 'Events']) }),
   rich_text: z.object({ blocks: z.array(richBlock).max(100), width: z.enum(['narrow', 'wide']).default('narrow') }),
   guest_services: z.object({ heading: text(160), intro: text(600).optional(), cta: cta.optional() }),
+  events_enquiry: z.object({ heading: text(160), intro: text(800).optional(), image: image.optional(), tone }),
 } as const;
 
 export type SectionType = keyof typeof SECTION_SCHEMAS;
@@ -58,14 +59,14 @@ export const SECTION_TYPES = Object.keys(SECTION_SCHEMAS) as SectionType[];
 export const SECTION_MODULES: Partial<Record<SectionType, string[]>> = {
   rooms: ['room_booking'], booking_search: ['room_booking'], offers: ['offers'],
   restaurant: ['restaurant'], restaurant_reservation: ['restaurant.reservations'], menu: ['restaurant'],
-  experiences: ['experiences'], guest_services: ['guest_portal'],
+  experiences: ['experiences'], guest_services: ['guest_portal'], events_enquiry: ['events'],
 };
 
 export const SECTION_LABELS: Record<SectionType, string> = {
   hero: 'Hero', intro: 'Property introduction', rooms: 'Rooms', offers: 'Offers', booking_search: 'Booking search', restaurant: 'Restaurant',
   restaurant_reservation: 'Restaurant reservation', menu: 'Menu', experiences: 'Experiences', amenities: 'Amenities', gallery: 'Gallery',
   image_text: 'Image + text', testimonials: 'Testimonials', faq: 'FAQ', location: 'Location & map', cta: 'Call to action', contact_form: 'Contact form',
-  rich_text: 'Rich text', guest_services: 'Guest services',
+  rich_text: 'Rich text', guest_services: 'Guest services', events_enquiry: 'Events enquiry',
 };
 
 const sectionId = z.string().regex(/^[a-zA-Z0-9_-]{4,40}$/);

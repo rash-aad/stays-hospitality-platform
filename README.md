@@ -26,9 +26,9 @@ Multi-tenant platform for hotels, resorts and villas: a tenant CRM and operation
 - **19 switchable modules** enforced server-side (disabled → 403, dependents cascade off)
 - **Booking engine** with a row-locked nightly inventory ledger (no double booking), idempotency keys, seasonal/weekend/occupancy pricing, GST slabs, coupons and cancellation policies
 - **UPI payments** chosen per tenant: the property's own UPI ID with staff verification of the UTR, or a UPI gateway (Razorpay adapter; signed webhooks), plus room charge and pay-at-property
-- **Restaurant**: table allocation with an exclusion constraint against overlaps, waitlist, menus with variants/add-ons/allergens, kitchen queue
+- **Restaurant**: table allocation with an exclusion constraint against overlaps, waitlist, menus with variants/add-ons/allergens, kitchen queue with orders assigned to a cook ("Only mine" filter)
 - **Guest services**: configurable request types with workflows and SLAs routed to housekeeping and maintenance
-- **Website builder**: structured JSON pages (no raw HTML), autosave with revision checks, publish, version history, rollback, custom domains verified by DNS TXT
+- **Website builder**: structured JSON pages (no raw HTML), autosave with revision checks, publish, version history, rollback, custom domains verified by DNS TXT; image fields pick from the media library; an events enquiry section feeds the events desk
 - **GST tax invoices**: GSTIN checksum validation, SAC codes, CGST/SGST split, financial-year numbering, company bill-to; issued invoices are frozen
 - **Guest journey automation**: pre-arrival email with online check-in, experience and table reminders, waitlist promotion notices, post-stay feedback with NPS and staff replies
 - **Self-service**: guests change dates (priced first, then committed) and complete online check-in (only the last 4 ID characters stored)

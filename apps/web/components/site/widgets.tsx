@@ -135,3 +135,35 @@ export function ContactForm({ topics }: { topics: string[] }) {
     </form>
   );
 }
+
+const EVENT_TYPES = [['wedding', 'Wedding'], ['birthday', 'Birthday or anniversary'], ['conference', 'Conference'], ['corporate_offsite', 'Company offsite'], ['other', 'Something else']] as const;
+
+/** Enquiry for weddings, conferences and celebrations — lands in Admin → Events. */
+export function EventEnquiryForm() {
+  const { editing } = useEdit();
+  const [f, setF] = useState({ contactName: '', email: '', phone: '', eventType: 'wedding', eventDate: '', guestCount: '', message: '' });
+  const [state, setState] = useState<'idle' | 'busy' | 'error'>('idle');
+  const [ref, setRef] = useState<string | null>(null);
+  const ready = useHydrated();
+  const t = useT();
+  if (ref) return <div><p className="display text-3xl">{t('Thank you — we’ll be in touch.')}</p><p className="t-muted mt-2">{t('Your enquiry reference is {ref}.', { ref })}</p></div>;
+  return (
+    <form className="grid gap-3 md:grid-cols-2" data-testid="event-enquiry" onSubmit={async (e) => {
+      e.preventDefault(); if (editing) return; setState('busy');
+      const body = { contactName: f.contactName, email: f.email, phone: f.phone || null, eventType: f.eventType, eventDate: f.eventDate || null, guestCount: f.guestCount ? Number(f.guestCount) : null, message: f.message || null };
+      const r = await fetch('/api/v1/public/events/inquiry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) setRef(j.data.reference); else setState('error');
+    }}>
+      <label><span className="t-label">{t('Name')}</span><input className="t-input" required minLength={2} value={f.contactName} onChange={(e) => setF({ ...f, contactName: e.target.value })} autoComplete="name" /></label>
+      <label><span className="t-label">{t('Email')}</span><input className="t-input" type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="email" /></label>
+      <label><span className="t-label">{t('Phone')}</span><input className="t-input" type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} autoComplete="tel" /></label>
+      <label><span className="t-label">{t('Occasion')}</span><select className="t-input" value={f.eventType} onChange={(e) => setF({ ...f, eventType: e.target.value })}>{EVENT_TYPES.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}</select></label>
+      <label><span className="t-label">{t('Date (if you know it)')}</span><input className="t-input" type="date" min={today()} value={f.eventDate} onChange={(e) => setF({ ...f, eventDate: e.target.value })} /></label>
+      <label><span className="t-label">{t('Number of guests')}</span><input className="t-input" type="number" min={1} max={5000} value={f.guestCount} onChange={(e) => setF({ ...f, guestCount: e.target.value })} /></label>
+      <label className="md:col-span-2"><span className="t-label">{t('Tell us about it')}</span><textarea className="t-input" rows={4} maxLength={3000} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} /></label>
+      {state === 'error' && <p className="text-sm text-red-700 md:col-span-2">{t('Something went wrong — please try again or call us.')}</p>}
+      <div className="md:col-span-2"><button className="t-btn" disabled={!ready || state === 'busy'}>{state === 'busy' ? t('Sending…') : t('Send enquiry')}</button></div>
+    </form>
+  );
+}

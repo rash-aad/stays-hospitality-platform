@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { guestApi, onAuthChange, refreshSession, setAccessToken, signOut } from '@/lib/api';
 import { useGuest, useHydrated } from '@/lib/hooks';
 import { InstallPwa, useServiceWorker } from '../pwa';
@@ -126,9 +126,12 @@ export function RedeemAccess() {
   const sp = useSearchParams();
   const router = useRouter();
   const [err, setErr] = useState<string | null>(null);
+  const sent = useRef<string | null>(null);
   useEffect(() => {
     const token = sp.get('token');
     if (!token) return setErr('This link is incomplete.');
+    if (sent.current === token) return; // one-time token: a second attempt (effects can run twice) would fail and overwrite success
+    sent.current = token;
     fetch('/api/v1/guest-auth/access-link/redeem', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })
       .then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error?.message); setAccessToken('guest', j.accessToken); const next = sp.get('next'); router.replace(next && /^\/stay(\/[\w/-]*)?$/.test(next) ? next : '/stay'); })
       .catch((e) => setErr(e.message || 'This link has expired.'));
@@ -139,8 +142,12 @@ export function RedeemAccess() {
 export function VerifyEmail() {
   const sp = useSearchParams();
   const [state, setState] = useState<'busy' | 'ok' | 'bad'>('busy');
+  const sent = useRef<string | null>(null);
   useEffect(() => {
-    fetch('/api/v1/auth/email/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: sp.get('token') }) }).then((r) => setState(r.ok ? 'ok' : 'bad'));
+    const token = sp.get('token');
+    if (sent.current === token) return; // one-time token: verify once
+    sent.current = token;
+    fetch('/api/v1/auth/email/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) }).then((r) => setState(r.ok ? 'ok' : 'bad'));
   }, [sp]);
   return state === 'busy' ? <p className="t-muted">Confirming…</p> : state === 'ok' ? <div><p className="display text-3xl">Email confirmed</p><a className="t-btn mt-6" href="/stay">Open your stay</a></div> : <p className="display text-3xl">This link has expired.</p>;
 }

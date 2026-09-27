@@ -1,7 +1,8 @@
 'use client';
 
 import { SECTION_SCHEMAS, type SectionType } from '@hp/contracts';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { useStaff } from '@/lib/hooks';
 
 /* A small Zod-4 introspection layer: the inspector is generated from the same schema the API validates. */
 type Z = { def: { type: string; innerType?: Z; in?: Z; element?: Z; entries?: Record<string, string>; shape?: Record<string, Z> }; shape?: Record<string, Z>; options?: string[]; maxLength?: number | null; minValue?: number | null; maxValue?: number | null };
@@ -21,6 +22,22 @@ const isCta = (z: Z) => z.def.type === 'object' && !!z.shape?.label && !!z.shape
 const LABEL: Record<string, string> = { heading: 'Heading', subheading: 'Subheading', eyebrow: 'Small line above', body: 'Text', intro: 'Intro', image: 'Photo', images: 'Photos', layout: 'Layout', overlay: 'Photo darkening', primaryCta: 'Main button', secondaryCta: 'Second button', showBookingBar: 'Show booking bar', align: 'Alignment', tone: 'Background', cta: 'Button', limit: 'How many', note: 'Note', showHours: 'Show opening hours', showPrices: 'Show prices', showDietary: 'Show dietary marks', items: 'Items', columns: 'Columns', imageSide: 'Photo side', directions: 'Directions', showMap: 'Show map', primary: 'Main button', secondary: 'Second button', topics: 'Enquiry topics', blocks: 'Content', width: 'Width', signature: 'Signature', address: 'Address override', kinds: 'Experience types' };
 const lbl = (k: string) => LABEL[k] ?? k.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
 
+/** Photos from Website → Media; picking one fills the address and its description. */
+function LibraryPick({ onPick }: { onPick: (m: { url: string; alt: string }) => void }) {
+  const [open, setOpen] = useState(false);
+  const { data } = useStaff<{ data: { id: string; url: string; alt: string }[] }>(open ? '/admin/media' : null);
+  return (
+    <div className="mb-1">
+      <button type="button" className="text-xs text-accent" onClick={() => setOpen(!open)}>{open ? 'Close media library' : 'Choose from media library'}</button>
+      {open && (!data ? <p className="mt-1 text-xs text-muted">Loading…</p>
+        : data.data.length === 0 ? <p className="mt-1 text-xs text-muted">No photos yet — upload them under Website → Media.</p>
+        : <ul className="mt-1.5 grid max-h-56 grid-cols-3 gap-1 overflow-y-auto" aria-label="Media library">
+            {data.data.map((m) => <li key={m.id}><button type="button" className="block w-full" title={m.alt || 'Use this photo'} onClick={() => { onPick({ url: m.url, alt: m.alt }); setOpen(false); }}><img src={m.url} alt={m.alt || 'Library photo'} className="aspect-square w-full border border-line object-cover hover:border-accent" /></button></li>)}
+          </ul>)}
+    </div>
+  );
+}
+
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return <div className="mb-3"><p className="label">{label}</p>{children}</div>;
 }
@@ -34,6 +51,7 @@ function Value({ k, z, v, set }: { k: string; z: Z; v: unknown; set: (v: unknown
     return (
       <Row label={lbl(k)}>
         {img.url && <img src={img.url} alt="" className="mb-1.5 aspect-[16/9] w-full border border-line object-cover" />}
+        <LibraryPick onPick={(m) => set({ url: m.url, alt: m.alt || img.alt || '' })} />
         <input className="input mb-1" placeholder="https://… image URL" value={img.url ?? ''} onChange={(e) => set(e.target.value ? { url: e.target.value, alt: img.alt ?? '' } : optional ? undefined : { url: '', alt: '' })} />
         <input className="input" placeholder="Describe the photo (alt text)" value={img.alt ?? ''} onChange={(e) => set({ url: img.url ?? '', alt: e.target.value })} />
       </Row>
@@ -73,18 +91,19 @@ function Value({ k, z, v, set }: { k: string; z: Z; v: unknown; set: (v: unknown
     if (el.def.type === 'object' && !isImage(el) && el.shape) {
       return <Repeater label={lbl(k)} arr={arr as Record<string, unknown>[]} shape={el.shape} set={set} />;
     }
-    if (isImage(el)) return <Repeater label={lbl(k)} arr={arr as Record<string, unknown>[]} shape={{ url: el.shape!.url!, alt: el.shape!.alt! }} set={set} />;
+    if (isImage(el)) return <Repeater label={lbl(k)} arr={arr as Record<string, unknown>[]} shape={{ url: el.shape!.url!, alt: el.shape!.alt! }} set={set} images />;
     if (el.def.type === 'union' || (el as unknown as { options?: unknown }).options) return <RichBlocks arr={arr as { type: string; text?: string; items?: string[] }[]} set={set} />;
   }
   return null;
 }
 
-function Repeater({ label, arr, shape, set }: { label: string; arr: Record<string, unknown>[]; shape: Record<string, Z>; set: (v: unknown) => void }) {
+function Repeater({ label, arr, shape, set, images }: { label: string; arr: Record<string, unknown>[]; shape: Record<string, Z>; set: (v: unknown) => void; images?: boolean }) {
   const keys = Object.keys(shape);
   const blank = Object.fromEntries(keys.map((k) => [k, unwrap(shape[k]!).z.def.type === 'object' ? undefined : '']));
   return (
     <div className="mb-3">
       <p className="label flex justify-between">{label}<button className="text-xs font-normal text-accent" onClick={() => set([...arr, blank])}>+ Add</button></p>
+      {images && <LibraryPick onPick={(m) => set([...arr, m])} />}
       <ol className="space-y-2">
         {arr.map((it, i) => (
           <li key={i} className="border border-line p-2">

@@ -5,7 +5,7 @@ import { SECTION_MODULES } from '@hp/contracts';
 import { Fragment, useState, type ReactNode } from 'react';
 import { T, useEdit } from './edit';
 import type { SiteData } from './types';
-import { BookingBar, ContactForm, ReservationWidget, useHydrated } from './widgets';
+import { BookingBar, ContactForm, EventEnquiryForm, ReservationWidget, useHydrated } from './widgets';
 
 type P = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 type Img = { url: string; alt: string };
@@ -460,6 +460,22 @@ function Contact({ s }: { s: PageSection }) {
   );
 }
 
+function EventsEnquiry({ s, d }: { s: PageSection; d: SiteData }) {
+  const p = s.props as P;
+  return (
+    <Wrap tone={p.tone}>
+      <div className="grid gap-10 md:grid-cols-[1fr_1.6fr]">
+        <div>
+          <T sid={s.id} path="heading" value={p.heading} as="h2" className="display block text-[clamp(1.8rem,3.4vw,2.8rem)]" />
+          <T sid={s.id} path="intro" value={p.intro} as="p" className="mt-4 block t-muted" />
+          {p.image && <Photo img={p.image} treat={d.site.theme?.tokens.imageTreatment} className="mt-8 aspect-[4/3] w-full" />}
+        </div>
+        <EventEnquiryForm />
+      </div>
+    </Wrap>
+  );
+}
+
 function RichText({ s }: { s: PageSection }) {
   const p = s.props as P;
   return (
@@ -494,7 +510,7 @@ function GuestServices({ s }: { s: PageSection }) {
 const MAP: Record<string, (x: { s: PageSection; d: SiteData }) => ReactNode> = {
   hero: Hero, intro: Intro, rooms: Rooms, offers: Offers, booking_search: BookingSearch, restaurant: Restaurant, restaurant_reservation: Reserve,
   menu: Menu, experiences: Experiences, amenities: Amenities, gallery: Gallery, image_text: ImageText, testimonials: Testimonials, faq: Faq,
-  location: Location, cta: CtaBlock, contact_form: Contact, rich_text: RichText, guest_services: GuestServices,
+  location: Location, cta: CtaBlock, contact_form: Contact, rich_text: RichText, guest_services: GuestServices, events_enquiry: EventsEnquiry,
 };
 
 /** A section is shown only if the modules it depends on are enabled for the tenant. */

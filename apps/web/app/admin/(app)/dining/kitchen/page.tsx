@@ -5,8 +5,9 @@ import { Empty, ErrorNote, Field, Loading, Modal, PageHeader, cx, useAction } fr
 import { staffApi } from '@/lib/api';
 import { ago, money, time } from '@/lib/format';
 import { useStaff } from '@/lib/hooks';
+import { useMe } from '@/components/admin-context';
 
-type Order = { id: string; reference: string; status: string; priority: string; typeName: string; restaurantName: string; locationLabel: string; guestName: string | null; specialInstructions: string | null; kitchenNotes: string | null; createdAt: string; scheduledFor: string | null; estimatedReadyAt: string | null; total: number; paymentMode: string; paymentStatus: string; items: { id: string; name: string; quantity: number; options: { group: string; name: string }[]; notes: string | null }[] };
+type Order = { id: string; reference: string; status: string; priority: string; assignedUserId: string | null; assignee: string | null; typeName: string; restaurantName: string; locationLabel: string; guestName: string | null; specialInstructions: string | null; kitchenNotes: string | null; createdAt: string; scheduledFor: string | null; estimatedReadyAt: string | null; total: number; paymentMode: string; paymentStatus: string; items: { id: string; name: string; quantity: number; options: { group: string; name: string }[]; notes: string | null }[] };
 const COLS = [
   { status: 'new', title: 'New', next: 'accepted', action: 'Accept' },
   { status: 'accepted', title: 'Accepted', next: 'preparing', action: 'Start cooking' },
@@ -22,14 +23,19 @@ export default function Kitchen() {
   const [reason, setReason] = useState('');
   const move = (id: string, status: string, note?: string) => run(() => staffApi(`/admin/orders/${id}/status`, { body: { status, note } })).then(() => mutate());
   const late = (o: Order) => o.estimatedReadyAt && new Date(o.estimatedReadyAt) < new Date() && o.status !== 'ready';
+  const me = useMe();
+  const { data: people } = useStaff<{ data: { id: string; name: string; roles: string[] }[] }>('/admin/staff-directory');
+  const cooks = (people?.data ?? []).filter((p) => p.roles.some((r) => ['kitchen', 'restaurant_manager', 'owner', 'manager'].includes(r)));
+  const [mine, setMine] = useState(false);
+  const assign = (o: Order, userId: string) => run(() => staffApi(`/admin/orders/${o.id}`, { method: 'PATCH', body: { assignedUserId: userId || null } }), userId ? 'Assigned' : 'Unassigned').then(() => mutate());
   return (
     <>
-      <PageHeader title="Kitchen" sub="Live orders. The screen refreshes every 10 seconds — keep it open on the pass." actions={<button className="btn" onClick={() => setMenuOpen(true)}>Sold out items</button>} />
+      <PageHeader title="Kitchen" sub="Live orders. The screen refreshes every 10 seconds — keep it open on the pass." actions={<><label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> Only mine</label><button className="btn" onClick={() => setMenuOpen(true)}>Sold out items</button></>} />
       <ErrorNote error={error} />
       {!data ? <Loading /> : data.data.length === 0 ? <Empty title="No live orders">New in-room, poolside and takeaway orders land here instantly.</Empty> : (
         <div className="grid min-h-[calc(100dvh-86px)] grid-cols-1 gap-px bg-line md:grid-cols-2 xl:grid-cols-4">
           {COLS.map((c) => {
-            const list = data.data.filter((o) => o.status === c.status);
+            const list = data.data.filter((o) => o.status === c.status && (!mine || o.assignedUserId === me.user.id));
             return (
               <section key={c.status} className="bg-canvas">
                 <h2 className="sticky top-0 flex justify-between border-b border-line bg-canvas px-4 py-2 text-xs font-medium text-muted"><span>{c.title}</span><span className="num">{list.length}</span></h2>
@@ -55,6 +61,12 @@ export default function Kitchen() {
                         ))}
                       </ul>
                       {o.specialInstructions && <p className="mx-3 mb-2 border-l-2 border-warn pl-2 text-xs">{o.specialInstructions}</p>}
+                      <label className="mx-3 mb-2 flex items-center gap-2 text-xs text-muted">Cook
+                        <select className="input h-7 flex-1 text-xs" aria-label={`Cook for ${o.reference}`} value={o.assignedUserId ?? ''} disabled={busy} onChange={(e) => assign(o, e.target.value)}>
+                          <option value="">Unassigned</option>
+                          {cooks.map((c) => <option key={c.id} value={c.id}>{c.id === me.user.id ? `${c.name} (me)` : c.name}</option>)}
+                        </select>
+                      </label>
                       <footer className="flex items-center justify-between gap-2 border-t border-line px-3 py-2">
                         <span className="text-xs text-muted">{money(o.total)} · {o.paymentMode === 'room_charge' ? 'room charge' : o.paymentStatus.replace('_', ' ')}</span>
                         <span className="flex gap-1">

@@ -178,7 +178,7 @@ export const tenantAdminRoutes: Routes = async (app, { config }) => {
   });
 
   // ----- Staff directory (for assignment pickers; any staff) -----
-  app.get('/admin/staff-directory', { schema: { tags: ['admin'] } }, async (req) => {
+  app.get('/admin/staff-directory', { preHandler: requireStaff(), schema: { tags: ['admin'] } }, async (req) => {
     const t = tenantOf(req);
     return withTenant(t.id, async (tx) => ({
       data: await tx

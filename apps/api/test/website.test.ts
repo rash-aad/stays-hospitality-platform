@@ -54,6 +54,23 @@ describe('website builder', () => {
     expect(r.json().error.details[0].path).toContain('primaryCta.href');
   });
 
+  it('publishes an events enquiry section whose form feeds the events desk', async () => {
+    const t = await createTenant();
+    const page = (await app.inject({ method: 'POST', url: '/api/v1/admin/pages', headers: t.auth, payload: { slug: 'weddings', title: 'Weddings' } })).json().data;
+    const doc = { sections: [{ id: 'events1', type: 'events_enquiry', props: { heading: 'Weddings & celebrations', image: { url: '/api/v1/public/media/x', alt: 'The lawn' }, tone: 'muted' } }] };
+    expect((await app.inject({ method: 'PUT', url: `/api/v1/admin/pages/${page.id}/draft`, headers: t.auth, payload: { doc, revision: page.draftRevision } })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'POST', url: `/api/v1/admin/pages/${page.id}/publish`, headers: t.auth, payload: {} })).statusCode).toBe(200);
+    const live = (await app.inject({ method: 'GET', url: '/api/v1/public/pages/weddings', headers: t.host })).json().data;
+    expect(live.doc.sections[0]).toMatchObject({ type: 'events_enquiry', props: { heading: 'Weddings & celebrations' } });
+    const catalogue = (await app.inject({ method: 'GET', url: '/api/v1/admin/site/templates', headers: t.auth })).json();
+    expect(catalogue.sections.find((s: { type: string }) => s.type === 'events_enquiry')).toEqual({ type: 'events_enquiry', label: 'Events enquiry', modules: ['events'] });
+
+    const sent = await app.inject({ method: 'POST', url: '/api/v1/public/events/inquiry', headers: t.host, payload: { contactName: 'Meera Pillai', email: 'meera@example.com', phone: null, eventType: 'wedding', eventDate: null, guestCount: 180, message: null } });
+    expect(sent.statusCode).toBe(201);
+    const list = (await app.inject({ method: 'GET', url: '/api/v1/admin/events', headers: t.auth })).json().data;
+    expect(list.map((e: { reference: string }) => e.reference)).toContain(sent.json().data.reference);
+  });
+
   it('only publishers can publish; builder module toggle is enforced', async () => {
     const t = await createTenant();
     await app.inject({ method: 'POST', url: '/api/v1/admin/site/templates/luxury/apply', headers: t.auth, payload: {} });

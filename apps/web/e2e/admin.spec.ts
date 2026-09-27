@@ -209,3 +209,22 @@ test('the Super Admin console lives only on its own origin and admits only platf
   await expect(p.getByText(`Platform administrators sign in at ${PLATFORM}`)).toBeVisible();
   await ctx.close();
 });
+
+test('kitchen: assign an order to a cook and filter to my orders', async ({ browser }) => {
+  const staff = await staffPage(browser);
+  const done = guard(staff);
+  await staff.goto(`${ADMIN}/admin/dining/kitchen`, { waitUntil: 'domcontentloaded' });
+  const cook = staff.getByRole('combobox', { name: /^Cook for / }).first();
+  await expect(cook).toBeVisible();
+  const ref = (await cook.getAttribute('aria-label'))!.replace('Cook for ', '');
+  await expect(cook.locator('option', { hasText: '(me)' })).toHaveCount(1);
+  await cook.selectOption({ label: (await cook.locator('option', { hasText: '(me)' }).textContent())! });
+  await expect(staff.getByText('Assigned', { exact: true })).toBeVisible();
+
+  await staff.getByLabel('Only mine').check();
+  await expect(staff.getByRole('combobox', { name: `Cook for ${ref}` })).toBeVisible();
+  await expect(staff.getByRole('combobox', { name: /^Cook for / })).toHaveCount(1);
+  await staff.getByRole('combobox', { name: `Cook for ${ref}` }).selectOption('');
+  await expect(staff.getByRole('combobox', { name: /^Cook for / })).toHaveCount(0);
+  done();
+});
